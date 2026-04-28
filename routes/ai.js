@@ -1,0 +1,242 @@
+const express = require('express');
+const authMiddleware = require('../middleware/auth');
+
+const router = express.Router();
+
+// ── Waste advice database ─────────────────────────────────────────────────────
+// Extended static knowledge + dynamic Claude API call for unknown/complex queries
+const WASTE_ADVICE = {
+  plastic: {
+    icon: '🧴',
+    name: 'Пластик',
+    co2_rate: '1.5 кг CO₂ на 1 кг',
+    recyclable: true,
+    preparation: [
+      'Промойте контейнер от остатков еды',
+      'Снимите крышки и этикетки если возможно',
+      'Сожмите бутылки для экономии места',
+      'Сортируйте по маркировке: ПЭТ (1), ПНВД (2), ПВХ (3), ПВНП (4), ПП (5)',
+    ],
+    where: 'Пункты приёма пластика, жёлтые баки для вторсырья',
+    not_recyclable: ['Загрязнённый пластик', 'Многослойная упаковка (тетрапак)', 'Пластиковые пакеты (в большинстве пунктов)'],
+    eco_fact: 'Переработка 1 кг пластика экономит 1.5 кг CO₂ и 2 литра нефти',
+  },
+  glass: {
+    icon: '🫙',
+    name: 'Стекло',
+    co2_rate: '0.3 кг CO₂ на 1 кг',
+    recyclable: true,
+    preparation: [
+      'Промойте тару от остатков',
+      'Удалите металлические крышки (сдайте отдельно)',
+      'Не смешивайте с керамикой и хрусталём',
+    ],
+    where: 'Зелёные баки для стекла, пункты приёма',
+    not_recyclable: ['Зеркала', 'Оконное стекло', 'Жаропрочное стекло (Pyrex)', 'Хрусталь', 'Лампочки'],
+    eco_fact: 'Стекло можно перерабатывать бесконечное количество раз без потери качества',
+  },
+  paper: {
+    icon: '📄',
+    name: 'Бумага',
+    co2_rate: '0.9 кг CO₂ на 1 кг',
+    recyclable: true,
+    preparation: [
+      'Удалите скрепки и скотч',
+      'Не мочите бумагу',
+      'Сложите и перевяжите стопки',
+      'Отделите газеты от картона',
+    ],
+    where: 'Синие баки для бумаги, пункты приёма макулатуры',
+    not_recyclable: ['Мокрая бумага', 'Бумага с пищевыми загрязнениями', 'Термобумага (чеки)', 'Ламинированная бумага'],
+    eco_fact: 'Из 1 тонны макулатуры получают 800 кг новой бумаги, экономя 17 деревьев',
+  },
+  cardboard: {
+    icon: '📦',
+    name: 'Картон',
+    co2_rate: '0.7 кг CO₂ на 1 кг',
+    recyclable: true,
+    preparation: [
+      'Разберите коробки и сложите плоско',
+      'Удалите скотч, скрепки, упаковочную плёнку',
+      'Уберите остатки пищи из пицца-боксов',
+    ],
+    where: 'Пункты приёма макулатуры и картона',
+    not_recyclable: ['Пицца-боксы с жирными пятнами', 'Тетрапак (многослойный)', 'Ламинированный картон'],
+    eco_fact: 'Переработка картона требует на 75% меньше энергии, чем производство нового',
+  },
+  metal: {
+    icon: '🥫',
+    name: 'Металл',
+    co2_rate: '2.0 кг CO₂ на 1 кг',
+    recyclable: true,
+    preparation: [
+      'Промойте банки от остатков еды',
+      'Сожмите алюминиевые банки',
+      'Отделите чёрный металл от цветного',
+      'Снимите крышки с жестяных банок',
+    ],
+    where: 'Пункты приёма металлолома, красные баки для металла',
+    not_recyclable: ['Аэрозольные баллоны (сдавайте отдельно)', 'Краска/химикаты в металлических ёмкостях'],
+    eco_fact: 'Алюминий можно перерабатывать бесконечно. Переработка экономит 95% энергии vs производство',
+  },
+  aluminum: {
+    icon: '🥤',
+    name: 'Алюминий',
+    co2_rate: '9.0 кг CO₂ на 1 кг',
+    recyclable: true,
+    preparation: [
+      'Промойте банки',
+      'Сожмите для экономии места',
+      'Соберите фольгу отдельно',
+    ],
+    where: 'Пункты приёма алюминия, вендинговые аппараты-переработчики',
+    not_recyclable: ['Алюминий с лаковым покрытием (некоторые виды)'],
+    eco_fact: 'Алюминиевая банка возвращается на полку в виде новой банки всего за 60 дней',
+  },
+  electronics: {
+    icon: '💻',
+    name: 'Электроника',
+    co2_rate: 'высокий',
+    recyclable: true,
+    preparation: [
+      'Удалите личные данные с устройств',
+      'Извлеките батарейки (сдайте отдельно)',
+      'Не разбирайте устройства самостоятельно',
+    ],
+    where: 'Специализированные пункты приёма электроники, магазины (Kaspi, DNS)',
+    not_recyclable: [],
+    eco_fact: 'Один смартфон содержит до 60 различных металлов, многие из которых редкоземельные',
+  },
+  battery: {
+    icon: '🔋',
+    name: 'Батарейки',
+    co2_rate: 'критически опасны для почвы',
+    recyclable: true,
+    preparation: [
+      'Не выбрасывайте в обычный мусор!',
+      'Соберите в контейнер или пакет',
+      'Не перегревайте и не прокалывайте',
+    ],
+    where: 'Специальные красные боксы в супермаркетах, торговых центрах, пунктах приёма',
+    not_recyclable: [],
+    eco_fact: '1 батарейка загрязняет 20 м² почвы и 200 литров воды токсичными веществами',
+  },
+  organic: {
+    icon: '🍎',
+    name: 'Органические отходы',
+    co2_rate: 'Метан при гниении на полигоне',
+    recyclable: true,
+    preparation: [
+      'Отделите от неорганического мусора',
+      'Используйте компостер если есть',
+      'Не смешивайте с мясом и рыбой в домашнем компосте',
+    ],
+    where: 'Компостеры, специализированные пункты органических отходов',
+    not_recyclable: ['Мясо и рыба (для домашнего компоста)'],
+    eco_fact: 'Компостирование уменьшает выброс метана и создаёт ценное удобрение',
+  },
+  textile: {
+    icon: '👕',
+    name: 'Текстиль и одежда',
+    co2_rate: '~5 кг CO₂ за сохранённую единицу',
+    recyclable: true,
+    preparation: [
+      'Чистые вещи — в пункты сдачи одежды',
+      'Грязный/рваный текстиль — в специальные баки',
+      'Упакуйте в пакет',
+    ],
+    where: 'Баки H&M, пункты "Одежда в дар", фонды помощи',
+    not_recyclable: ['Сильно загрязнённый текстиль'],
+    eco_fact: 'Производство 1 кг хлопка требует 10 000 литров воды. Повторное использование = огромная экономия',
+  },
+};
+
+// ── GET /api/ai/advice/:material ──────────────────────────────────────────────
+// Called after your ML model identifies waste type. Returns recycling advice.
+router.get('/advice/:material', authMiddleware, async (req, res) => {
+  try {
+    const key = req.query.material_key || req.params.material.toLowerCase().trim();
+    const advice = WASTE_ADVICE[key];
+
+    if (advice) {
+      return res.json({
+        found: true,
+        material: key,
+        ...advice,
+      });
+    }
+
+    // Unknown material — return generic advice + flag for future addition
+    return res.json({
+      found: false,
+      material: key,
+      icon: '♻️',
+      name: key,
+      recyclable: null,
+      preparation: ['Уточните тип материала у оператора пункта приёма'],
+      where: 'Обратитесь в ближайший пункт приёма для уточнения',
+      not_recyclable: [],
+      eco_fact: 'Сортировка отходов — первый шаг к чистой планете',
+      note: 'Материал не найден в базе. Пожалуйста, уточните тип.',
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// ── POST /api/ai/advice ───────────────────────────────────────────────────────
+// Called with your ML model's result: { material, confidence, label }
+// Returns advice + points preview based on weight
+router.post('/advice', authMiddleware, async (req, res) => {
+  try {
+    const { material, confidence, weight_kg, station_id } = req.body;
+    if (!material) return res.status(400).json({ error: 'material обязателен' });
+
+    const key = material.toLowerCase().trim();
+    const advice = WASTE_ADVICE[key] || null;
+
+    // Points preview
+    let points_preview = null;
+    if (weight_kg && station_id) {
+      const stRes = await require('../db').pool.query(
+        'SELECT material_rates FROM stations WHERE id=$1', [station_id]
+      );
+      if (stRes.rows.length) {
+        const rates = stRes.rows[0].material_rates;
+        const rate = rates[key] ?? 5;
+        points_preview = Math.round(weight_kg * rate);
+      }
+    }
+
+    res.json({
+      material: key,
+      confidence: confidence || null,
+      advice: advice || {
+        icon: '♻️',
+        name: material,
+        preparation: ['Уточните у оператора пункта приёма'],
+        where: 'Ближайший пункт приёма',
+        eco_fact: 'Каждый кг переработанного мусора помогает планете',
+      },
+      points_preview,
+      co2_preview: weight_kg ? require('../services/achievements').calcCO2(key, weight_kg) : null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// ── GET /api/ai/materials ─────────────────────────────────────────────────────
+// List all known materials (for ML model label mapping)
+router.get('/materials', (req, res) => {
+  const list = Object.entries(WASTE_ADVICE).map(([key, v]) => ({
+    key,
+    name: v.name,
+    icon: v.icon,
+    recyclable: v.recyclable,
+    co2_rate: v.co2_rate,
+  }));
+  res.json(list);
+});
+
+module.exports = router;

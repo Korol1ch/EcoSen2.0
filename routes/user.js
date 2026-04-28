@@ -1,17 +1,19 @@
 const express = require('express');
 const { pool } = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { checkUserLimits, logAnomaly, rewardHonestTransaction } = require('../services/antiFraud');
+const { calcCO2, checkAndGrantAchievements } = require('../services/achievements');
+const { notify } = require('../services/notify');
 
 const router = express.Router();
-
-// All routes require auth
 router.use(authMiddleware);
 
 // GET /api/user/me — full profile
 router.get('/me', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, telegram_id, points, scans, trust_score, created_at FROM users WHERE id = $1',
+      `SELECT id, name, email, telegram_id, points, scans, trust_score, co2_saved_kg, created_at
+       FROM users WHERE id = $1`,
       [req.user.id]
     );
     res.json(result.rows[0]);
@@ -24,13 +26,12 @@ router.get('/me', async (req, res) => {
 router.get('/history', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT t.id, t.material, t.weight_kg, t.points, t.icon, t.source, t.created_at,
+      `SELECT t.id, t.material, t.weight_kg, t.points, t.co2_saved, t.icon, t.source, t.status, t.created_at,
               s.name AS station_name
        FROM transactions t
        LEFT JOIN stations s ON t.station_id = s.id
        WHERE t.user_id = $1
-       ORDER BY t.created_at DESC
-       LIMIT 50`,
+       ORDER BY t.created_at DESC LIMIT 50`,
       [req.user.id]
     );
     res.json(result.rows);
@@ -43,7 +44,7 @@ router.get('/history', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     const top = await pool.query(
-      `SELECT id, name, points, scans,
+      `SELECT id, name, points, scans, co2_saved_kg,
               RANK() OVER (ORDER BY points DESC) AS rank
        FROM users ORDER BY points DESC LIMIT 10`
     );
@@ -53,68 +54,69 @@ router.get('/leaderboard', async (req, res) => {
        ) ranked WHERE id = $1`,
       [req.user.id]
     );
-    res.json({
-      leaderboard: top.rows,
-      my_rank: myRank.rows[0]?.rank || null
-    });
+    res.json({ leaderboard: top.rows, my_rank: myRank.rows[0]?.rank || null });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// POST /api/user/scan — record AI scan result and award points
+// POST /api/user/scan — AI scan result → award points
 router.post('/scan', async (req, res) => {
   try {
-    const { material, points, icon, confidence, source = 'ai_scan' } = req.body;
-
-    if (!material || !points) {
+    const { material, points, icon, weight_kg = 0, source = 'ai_scan' } = req.body;
+    if (!material || !points)
       return res.status(400).json({ error: 'material and points required' });
+
+    // Anti-fraud
+    const check = await checkUserLimits(req.user.id, points, weight_kg);
+    if (!check.ok) {
+      await logAnomaly({
+        userId: req.user.id,
+        type: 'USER_LIMIT_EXCEEDED',
+        description: check.reason,
+        severity: 'medium',
+      });
+      return res.status(429).json({ error: check.reason });
     }
 
-    // ── Anti-fraud: daily limit check ──────────────────────────────────────
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dailyCheck = await pool.query(
-      `SELECT COALESCE(SUM(points), 0) AS daily_pts,
-              COUNT(*) AS daily_scans
-       FROM transactions
-       WHERE user_id = $1 AND created_at >= $2`,
-      [req.user.id, today]
-    );
-    const dailyPts = parseInt(dailyCheck.rows[0].daily_pts);
-    const dailyScans = parseInt(dailyCheck.rows[0].daily_scans);
-
-    if (dailyPts >= 500) {
-      await pool.query(
-        `INSERT INTO anomaly_logs (user_id, type, description, severity)
-         VALUES ($1, 'DAILY_LIMIT', 'User exceeded 500 pts/day limit', 'medium')`,
-        [req.user.id]
-      );
-      return res.status(429).json({ error: 'Daily points limit reached (500 pts/day)' });
-    }
-    if (dailyScans >= 30) {
-      return res.status(429).json({ error: 'Daily scan limit reached (30 scans/day)' });
-    }
+    const co2Saved = calcCO2(material, weight_kg);
 
     // Insert transaction
     await pool.query(
-      `INSERT INTO transactions (user_id, material, points, icon, source)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, material, points, icon || '♻️', source]
+      `INSERT INTO transactions (user_id, material, weight_kg, points, co2_saved, icon, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.user.id, material, weight_kg || null, points, co2Saved, icon || '♻️', source]
     );
 
-    // Update user points and scans
+    // Update user
     const updated = await pool.query(
-      `UPDATE users SET points = points + $1, scans = scans + 1, updated_at = NOW()
-       WHERE id = $2
-       RETURNING id, name, points, scans, trust_score`,
-      [points, req.user.id]
+      `UPDATE users
+       SET points=points+$1, scans=scans+1, co2_saved_kg=co2_saved_kg+$2, updated_at=NOW()
+       WHERE id=$3
+       RETURNING id, name, points, scans, trust_score, co2_saved_kg`,
+      [points, co2Saved, req.user.id]
     );
+
+    await rewardHonestTransaction(req.user.id);
+
+    // Check achievements
+    const newAchievements = await checkAndGrantAchievements(req.user.id);
+    for (const ach of newAchievements) {
+      await notify(req.user.id, {
+        type: 'achievement',
+        title: `${ach.icon} Достижение: ${ach.name}`,
+        body: ach.description,
+        sendEmail: true,
+        emailSubject: `EcoSen: Новое достижение — ${ach.name}`,
+      });
+    }
 
     res.json({
       success: true,
       awarded: points,
-      user: updated.rows[0]
+      co2_saved: co2Saved,
+      user: updated.rows[0],
+      new_achievements: newAchievements,
     });
   } catch (err) {
     console.error('Scan error:', err);
@@ -122,18 +124,18 @@ router.post('/scan', async (req, res) => {
   }
 });
 
-// PATCH /api/user/profile — update name or telegram_id
+// PATCH /api/user/profile
 router.patch('/profile', async (req, res) => {
   try {
     const { name, telegram_id } = req.body;
     const result = await pool.query(
       `UPDATE users SET
-         name = COALESCE($1, name),
-         telegram_id = COALESCE($2, telegram_id),
-         updated_at = NOW()
-       WHERE id = $3
-       RETURNING id, name, email, telegram_id, points, scans`,
-      [name || null, telegram_id || null, req.user.id]
+         name=COALESCE($1,name),
+         telegram_id=COALESCE($2,telegram_id),
+         updated_at=NOW()
+       WHERE id=$3
+       RETURNING id, name, email, telegram_id, points, scans, co2_saved_kg`,
+      [name||null, telegram_id||null, req.user.id]
     );
     res.json(result.rows[0]);
   } catch (err) {
