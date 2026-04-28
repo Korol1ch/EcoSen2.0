@@ -11,7 +11,9 @@ const PORT = process.env.PORT || 3000;
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: process.env.FRONTEND_URL 
+    ? process.env.FRONTEND_URL.split(',') 
+    : ['https://korol1ch.github.io'],
   credentials: true
 }));
 app.use(express.json());
