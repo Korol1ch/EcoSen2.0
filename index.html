@@ -1002,8 +1002,8 @@ main {
     <span>© 2026 EcoSen</span>
   </footer>
  
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
  
   <script>
@@ -1383,7 +1383,12 @@ main {
       modelLoading = true;
       setModelStatus('⏳ Загрузка модели...', '#888');
       try {
-        model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+        // Таймаут 15 секунд на загрузку модели
+        const loadPromise = tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout: модель не загрузилась за 15с')), 15000)
+        );
+        model = await Promise.race([loadPromise, timeoutPromise]);
         setModelStatus('✅ Модель готова', '#4caf50');
         setTimeout(() => setModelStatus(''), 2000);
       } catch(e) {
@@ -1402,10 +1407,16 @@ main {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
+        imageReady = false; // сбросить до загрузки
+        // ВАЖНО: onload назначается ДО src, чтобы не пропустить событие
         imageEl.onload = () => {
           imageReady = true;
           reportCard.classList.remove('visible');
           loadingCard.classList.remove('visible');
+        };
+        imageEl.onerror = () => {
+          imageReady = false;
+          alert('Ошибка загрузки изображения. Попробуйте другой файл.');
         };
         imageEl.src = ev.target.result;
         imageEl.style.display = 'block';
@@ -1418,6 +1429,15 @@ main {
     });
  
     document.getElementById('btn-analyze').addEventListener('click', async () => {
+      // Ждём до 3с если изображение ещё грузится
+      if (!imageReady && imageEl.src) {
+        await new Promise((resolve) => {
+          const check = setInterval(() => {
+            if (imageReady) { clearInterval(check); resolve(); }
+          }, 100);
+          setTimeout(() => { clearInterval(check); resolve(); }, 3000);
+        });
+      }
       if (!imageReady) { alert(t('no_image')); return; }
       if (!model) {
         setModelStatus('⏳ Загрузка модели...', '#888');
