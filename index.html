@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="kk" data-lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoSen</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg: #f7f6f3;
+      --surface: #ffffff;
+      --border: #e5e3dd;
+      --text-primary: #1a1a18;
+      --text-secondary: #7a7870;
+      --accent: #3a7d44;
+      --accent-light: #eaf2ec;
+      --accent-mid: #c6e0ca;
+      --danger: #c0392b;
+      --gold: #d4a017;
+      --gold-light: #fdf4dc;
+      --radius: 14px;
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+    }
+ 
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+ 
+    a { text-decoration: none; color: inherit; }
+ 
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+ 
+    .header-inner {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 20px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+ 
+    .logo {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+ 
+    .logo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+ 
+    .lang-switcher {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 500;
+    }
+ 
+    .lang-btn {
+      padding: 5px 12px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      background: var(--surface);
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+ 
+    .lang-btn.active { background: var(--accent); color: #fff; }
+    .lang-btn:not(.active):hover { background: var(--bg); }
+ 
+    /* ── NAV TABS ── */
+    .nav-tabs {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+ 
+    .nav-tab {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: 'DM Sans', sans-serif;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+ 
+    .nav-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+ 
+    .nav-tab:hover:not(.active) { color: var(--text-primary); }
+ 
+    /* ── PAGES ── */
+    .page { display: none; }
+    .page.active { display: block; }
+ 
+    /* ── MAIN ── */
+    main {
+      flex: 1;
+      max-width: 640px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+ 
+    /* ── POINTS BANNER ── */
+    .points-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+ 
+    .points-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+ 
+    .points-circle {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+ 
+    .points-circle-inner {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-align: center;
+      line-height: 1.2;
+    }
+ 
+    .points-circle-inner span {
+      display: block;
+      font-size: 18px;
+      font-family: 'DM Mono', monospace;
+    }
+ 
+    .level-info {}
+    .level-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .level-next {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+ 
+    .level-bar-wrap {
+      flex: 1;
+      max-width: 140px;
+    }
+ 
+    .level-bar-track {
+      height: 5px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+ 
+    .level-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+    }
+ 
+    .level-bar-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: right;
+    }
+ 
+    /* ── SCAN STREAK ── */
+    .streak-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* ── ДОП. ВИЗУАЛЬНЫЕ ОТСТУПЫ ── */
+
+/* увеличиваем ощущение пространства внутри страниц */
+.page.active > * {
+  margin-bottom: 16px;
+}
+
+.page.active > *:last-child {
+  margin-bottom: 0;
+}
+
+/* чуть более “дышащий” основной контейнер */
+main {
+  gap: 20px;
+}
+ 
+    .streak-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+ 
+    .streak-dot.done { background: var(--accent-light); }
+    .streak-dot.done::after { content: '✓'; font-size: 11px; color: var(--accent); font-weight: 700; }
+ 
+    /* ── PAGE TITLE ── */
+    .page-title {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      line-height: 1.3;
+    }
+ 
+    .page-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+ 
+    /* ── UPLOAD CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+ 
+    .upload-zone {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 240px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      transition: background 0.15s;
+    }
+ 
+    .upload-zone:hover { background: #fafaf8; }
+    .upload-zone.has-image { min-height: 260px; }
+ 
+    #uploaded-image {
+      max-width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      display: none;
+    }
+ 
+    .upload-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+ 
+    .upload-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: var(--accent-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+ 
+    .upload-placeholder p { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+    .upload-placeholder span { font-size: 12px; color: var(--text-secondary); }
+    #image-upload { display: none; }
+ 
+    /* ── BUTTONS ── */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+ 
+    .btn {
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: opacity 0.15s, background 0.15s;
+    }
+ 
+    .btn:hover { opacity: 0.88; }
+    .btn:active { opacity: 0.72; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--accent-light); color: var(--accent); border-left: 1px solid var(--border); }
+ 
+    /* ── MAP ── */
+    .map-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: none;
+    }
+    .map-wrapper.visible { display: block; }
+    #map { width: 100%; height: 320px; z-index: 1; }
+ 
+    /* ── REPORT CARD ── */
+    .report-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: none;
+    }
+    .report-card.visible { display: block; animation: slideUp 0.3s ease; }
+ 
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+ 
+    .report-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+ 
+    .report-header-left { display: flex; align-items: center; gap: 10px; }
+ 
+    .report-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--accent-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+ 
+    .report-title { font-size: 16px; font-weight: 600; }
+    .report-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+ 
+    .confidence-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+    .confidence-badge.low { background: #fef3cd; color: #8a6100; }
+ 
+    .confidence-bar-wrap {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+ 
+    .bar-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 7px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+ 
+    .bar-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: var(--accent);
+      transition: width 0.7s cubic-bezier(.4,0,.2,1);
+      width: 0%;
+    }
+ 
+    .info-grid {
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+ 
+    .info-cell { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+    .info-cell-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+    .info-cell-value { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .info-cell-value.forbidden { color: var(--danger); }
+ 
+    .tips-section { padding: 16px 20px; }
+    .tip-item { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.55; color: #444; }
+    .tip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 8px; flex-shrink: 0; }
+ 
+    /* ── POINTS TOAST ── */
+    .points-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--text-primary);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 99px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 999;
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+      opacity: 0;
+      white-space: nowrap;
+    }
+ 
+    .points-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+ 
+    /* ── LEVEL UP OVERLAY ── */
+    .levelup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+ 
+    .levelup-overlay.show { display: flex; animation: fadeIn 0.25s ease; }
+ 
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+ 
+    .levelup-card {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 36px 28px;
+      text-align: center;
+      max-width: 300px;
+      width: 90%;
+      animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1);
+    }
+ 
+    @keyframes popIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+ 
+    .levelup-emoji { font-size: 52px; margin-bottom: 12px; }
+    .levelup-title { font-size: 13px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .levelup-name { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .levelup-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; }
+    .levelup-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+ 
+    /* ── LOADING ── */
+    .loading-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 30px 20px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .loading-card.visible { display: flex; }
+ 
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+ 
+    /* ── PROFILE PAGE ── */
+    .profile-header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+ 
+    .avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+      border: 2px solid var(--accent-mid);
+    }
+ 
+    .profile-name { font-size: 18px; font-weight: 600; }
+    .profile-level { font-size: 13px; color: var(--accent); font-weight: 500; margin-top: 2px; }
+    .profile-joined { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+ 
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+ 
+    .stat-cell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 12px;
+      text-align: center;
+    }
+ 
+    .stat-value {
+      font-size: 22px;
+      font-weight: 600;
+      font-family: 'DM Mono', monospace;
+      color: var(--text-primary);
+    }
+ 
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+      font-weight: 500;
+    }
+ 
+    /* ── HISTORY ── */
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 0 2px;
+    }
+ 
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+ 
+    .history-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+ 
+    .history-icon {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      background: var(--accent-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+ 
+    .history-info { flex: 1; }
+    .history-material { font-size: 14px; font-weight: 500; }
+    .history-time { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+ 
+    .history-pts {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+ 
+    .empty-state {
+      text-align: center;
+      padding: 32px 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+ 
+    .empty-state .empty-icon { font-size: 32px; margin-bottom: 10px; }
+ 
+    /* ── LEADERBOARD PAGE ── */
+    .leaderboard-list { display: flex; flex-direction: column; gap: 8px; }
+ 
+    .lb-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+ 
+    .lb-item.me {
+      border-color: var(--accent-mid);
+      background: var(--accent-light);
+    }
+ 
+    .lb-rank {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'DM Mono', monospace;
+      color: var(--text-secondary);
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+ 
+    .lb-rank.gold { color: #c9920a; }
+    .lb-rank.silver { color: #888; }
+    .lb-rank.bronze { color: #a0673a; }
+ 
+    .lb-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+ 
+    .lb-name { font-size: 14px; font-weight: 500; flex: 1; }
+    .lb-me-tag { font-size: 11px; color: var(--accent); font-weight: 600; }
+ 
+    .lb-pts {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+ 
+    /* ── REWARDS PAGE ── */
+    .rewards-banner {
+      background: var(--gold-light);
+      border: 1px solid #f0dea0;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+ 
+    .rewards-banner-icon { font-size: 32px; flex-shrink: 0; }
+    .rewards-banner-title { font-size: 16px; font-weight: 600; }
+    .rewards-banner-sub { font-size: 13px; color: #8a6100; margin-top: 3px; }
+ 
+    .rewards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+ 
+    .reward-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 14px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+ 
+    .reward-card.locked { opacity: 0.65; }
+ 
+    .reward-emoji { font-size: 32px; margin-bottom: 10px; }
+    .reward-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .reward-desc { font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4; }
+ 
+    .reward-cost {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--gold-light);
+      color: #8a6100;
+    }
+ 
+    .reward-cost.available { background: var(--accent-light); color: var(--accent); }
+ 
+    .reward-lock {
+      position: absolute;
+      top: 8px; right: 10px;
+      font-size: 14px;
+    }
+ 
+    .coming-soon-badge {
+      display: inline-block;
+      background: #f0f0f0;
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-top: 6px;
+    }
+ 
+    /* ── FOOTER ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+ 
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-dot"></span>
+        EcoSen
+      </div>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="kk">ҚАЗ</button>
+        <button class="lang-btn" data-lang="ru">РУС</button>
+        <button class="lang-btn" data-lang="en">ENG</button>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-page="scan-page">📷 <span data-i18n="tab_scan">Скан</span></button>
+      <button class="nav-tab" data-page="profile-page">👤 <span data-i18n="tab_profile">Профиль</span></button>
+      <button class="nav-tab" data-page="leaderboard-page">🏆 <span data-i18n="tab_leaders">Рейтинг</span></button>
+      <button class="nav-tab" data-page="rewards-page">🎁 <span data-i18n="tab_rewards">Сыйлықтар</span></button>
+    </nav>
+  </header>
+ 
+  <main>
+ 
+    <!-- ── SCAN PAGE ── -->
+    <div class="page active" id="scan-page">
+ 
+      <!-- Points banner -->
+      <div class="points-banner">
+        <div class="points-left">
+          <div class="points-circle">
+            <div class="points-circle-inner">
+              <span id="banner-pts">0</span>
+              pts
+            </div>
+          </div>
+          <div class="level-info">
+            <div class="level-name" id="banner-level-name">Новичок</div>
+            <div class="level-next" id="banner-level-next">10 до следующего уровня</div>
+          </div>
+        </div>
+        <div class="level-bar-wrap">
+          <div class="level-bar-track">
+            <div class="level-bar-fill" id="banner-bar" style="width:0%"></div>
+          </div>
+          <div class="level-bar-label" id="banner-bar-label">0 / 10</div>
+        </div>
+      </div>
+ 
+      <div>
+        <h1 class="page-title" data-i18n="title">Қоқысты анықтау</h1>
+        <p class="page-sub" data-i18n="subtitle">Суретті жүктеңіз — модель материалды анықтайды</p>
+      </div>
+ 
+      <div class="card">
+        <label for="image-upload" class="upload-zone" id="upload-zone">
+          <img id="uploaded-image" src="" alt="" />
+          <div class="upload-placeholder" id="upload-placeholder">
+            <div class="upload-icon">📷</div>
+            <p data-i18n="upload_cta">Суретті таңдау</p>
+            <span data-i18n="upload_hint">JPG, PNG, WebP</span>
+          </div>
+        </label>
+        <input type="file" id="image-upload" accept="image/*">
+ 
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-analyze">
+            <span>🔍</span>
+            <span data-i18n="btn_analyze">Анықтау</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-map">
+            <span>📍</span>
+            <span data-i18n="btn_map">Жинау нүктелері</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="map-wrapper" id="map-wrapper">
+        <div id="map"></div>
+      </div>
+ 
+      <div class="loading-card" id="loading-card">
+        <div class="spinner"></div>
+        <span data-i18n="analyzing">Талдау жүріп жатыр...</span>
+      </div>
+ 
+      <div class="report-card" id="report-card">
+        <div class="report-header">
+          <div class="report-header-left">
+            <div class="report-icon" id="report-icon">♻️</div>
+            <div>
+              <div class="report-title" id="report-title">—</div>
+              <div class="report-sub" id="report-sub" data-i18n="report_sub">Анықталған материал</div>
+            </div>
+          </div>
+          <div class="confidence-badge" id="confidence-badge">—</div>
+        </div>
+ 
+        <div class="confidence-bar-wrap">
+          <div class="bar-label" data-i18n="confidence_label">Сенімділік</div>
+          <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
+        </div>
+ 
+        <div class="info-grid">
+          <div class="info-cell">
+            <div class="info-cell-label" data-i18n="label_bin">Контейнер</div>
+            <div class="info-cell-value" id="info-bin">—</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label" data-i18n="label_forbidden">Тыйым</div>
+            <div class="info-cell-value forbidden" id="info-forbidden">—</div>
+          </div>
+        </div>
+ 
+        <div class="tips-section">
+          <div class="tip-item">
+            <div class="tip-dot"></div>
+            <span id="info-tip">—</span>
+          </div>
+        </div>
+      </div>
+ 
+    </div>
+ 
+    <!-- ── PROFILE PAGE ── -->
+    <div class="page" id="profile-page">
+      <div class="profile-header">
+        <div class="avatar" id="profile-avatar">🌱</div>
+        <div>
+          <div class="profile-name" id="profile-name-display">EcoUser</div>
+          <div class="profile-level" id="profile-level-display">Уровень 1 · Новичок</div>
+          <div class="profile-joined" id="profile-joined">Сегодня</div>
+        </div>
+      </div>
+ 
+      <div class="stats-grid">
+        <div class="stat-cell">
+          <div class="stat-value" id="stat-pts">0</div>
+          <div class="stat-label" data-i18n="stat_pts">Баллов</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="stat-scans">0</div>
+          <div class="stat-label" data-i18n="stat_scans">Сканов</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="stat-level">1</div>
+          <div class="stat-label" data-i18n="stat_level">Уровень</div>
+        </div>
+      </div>
+ 
+      <div class="section-title" data-i18n="history_title">История сканирований</div>
+      <div class="history-list" id="history-list">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <span data-i18n="history_empty">Пока нет сканирований</span>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- ── LEADERBOARD PAGE ── -->
+    <div class="page" id="leaderboard-page">
+      <div>
+        <div class="page-title" data-i18n="lb_title">Рейтинг</div>
+        <div class="page-sub" data-i18n="lb_sub">Топ эко-сканеров города</div>
+      </div>
+      <div class="leaderboard-list" id="leaderboard-list"></div>
+    </div>
+ 
+    <!-- ── REWARDS PAGE ── -->
+    <div class="page" id="rewards-page">
+      <div class="rewards-banner">
+        <div class="rewards-banner-icon">🎁</div>
+        <div>
+          <div class="rewards-banner-title" data-i18n="rewards_title">Сыйлық дүкені</div>
+          <div class="rewards-banner-sub" id="rewards-pts-label">Доступно: 0 баллов</div>
+        </div>
+      </div>
+      <div class="rewards-grid" id="rewards-grid"></div>
+      <div style="text-align:center; font-size:13px; color:var(--text-secondary); padding:8px 0 4px;" data-i18n="rewards_note">
+        Жинаңыз, ал жақын арада нақты сыйлықтар пайда болады!
+      </div>
+    </div>
+ 
+  </main>
+ 
+  <!-- Points toast -->
+  <div class="points-toast" id="points-toast">
+    <span>⭐</span>
+    <span id="toast-text">+10 баллов</span>
+  </div>
+ 
+  <!-- Level up overlay -->
+  <div class="levelup-overlay" id="levelup-overlay">
+    <div class="levelup-card">
+      <div class="levelup-emoji" id="lu-emoji">🏆</div>
+      <div class="levelup-title" data-i18n="levelup_label">Новый уровень!</div>
+      <div class="levelup-name" id="lu-name">Эко-воин</div>
+      <div class="levelup-sub" id="lu-sub">Вы отсортировали уже 10 предметов</div>
+      <button class="levelup-btn" id="lu-close" data-i18n="levelup_btn">Продолжить</button>
+    </div>
+  </div>
+ 
+  <footer>
+    <span>© 2026 EcoSen</span>
+  </footer>
+ 
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+ 
+  <script>
+    // ─── i18n ────────────────────────────────────────────────────────────────
+    const translations = {
+      kk: {
+        title: "Қоқысты анықтау",
+        subtitle: "Суретті жүктеңіз — модель материалды анықтайды",
+        upload_cta: "Суретті таңдау",
+        upload_hint: "JPG, PNG, WebP",
+        btn_analyze: "Анықтау",
+        btn_map: "Жинау нүктелері",
+        analyzing: "Талдау жүріп жатыр...",
+        report_sub: "Анықталған материал",
+        confidence_label: "Сенімділік",
+        label_bin: "Контейнер",
+        label_forbidden: "Тыйым",
+        no_image: "Алдымен суретті таңдаңыз",
+        not_detected: "Материал анықталмады",
+        tab_scan: "Скан",
+        tab_profile: "Профиль",
+        tab_leaders: "Рейтинг",
+        tab_rewards: "Сыйлықтар",
+        stat_pts: "Балл",
+        stat_scans: "Скан",
+        stat_level: "Деңгей",
+        history_title: "Сканерлеу тарихы",
+        history_empty: "Әзірге сканерлеу жоқ",
+        lb_title: "Рейтинг",
+        lb_sub: "Қаланың үздік эко-сканерлері",
+        rewards_title: "Сыйлық дүкені",
+        rewards_note: "Жинаңыз, ал жақын арада нақты сыйлықтар пайда болады!",
+        levelup_label: "Жаңа деңгей!",
+        levelup_btn: "Жалғастыру",
+        toast_earned: "балл жиналды",
+      },
+      ru: {
+        title: "Определение мусора",
+        subtitle: "Загрузите фото — модель определит материал",
+        upload_cta: "Выбрать изображение",
+        upload_hint: "JPG, PNG, WebP",
+        btn_analyze: "Определить",
+        btn_map: "Пункты сдачи",
+        analyzing: "Анализ...",
+        report_sub: "Определённый материал",
+        confidence_label: "Уверенность",
+        label_bin: "Контейнер",
+        label_forbidden: "Запрещено",
+        no_image: "Сначала выберите изображение",
+        not_detected: "Материал не определён",
+        tab_scan: "Скан",
+        tab_profile: "Профиль",
+        tab_leaders: "Рейтинг",
+        tab_rewards: "Награды",
+        stat_pts: "Баллов",
+        stat_scans: "Сканов",
+        stat_level: "Уровень",
+        history_title: "История сканирований",
+        history_empty: "Пока нет сканирований",
+        lb_title: "Рейтинг",
+        lb_sub: "Топ эко-сканеров города",
+        rewards_title: "Магазин наград",
+        rewards_note: "Копите баллы — скоро появятся реальные призы!",
+        levelup_label: "Новый уровень!",
+        levelup_btn: "Продолжить",
+        toast_earned: "баллов получено",
+      },
+      en: {
+        title: "Waste Detection",
+        subtitle: "Upload a photo — the model will identify the material",
+        upload_cta: "Choose image",
+        upload_hint: "JPG, PNG, WebP",
+        btn_analyze: "Identify",
+        btn_map: "Drop-off points",
+        analyzing: "Analyzing...",
+        report_sub: "Detected material",
+        confidence_label: "Confidence",
+        label_bin: "Container",
+        label_forbidden: "Not allowed",
+        no_image: "Please choose an image first",
+        not_detected: "Material not detected",
+        tab_scan: "Scan",
+        tab_profile: "Profile",
+        tab_leaders: "Ranking",
+        tab_rewards: "Rewards",
+        stat_pts: "Points",
+        stat_scans: "Scans",
+        stat_level: "Level",
+        history_title: "Scan history",
+        history_empty: "No scans yet",
+        lb_title: "Leaderboard",
+        lb_sub: "Top eco-scanners in the city",
+        rewards_title: "Reward shop",
+        rewards_note: "Keep scanning — real rewards are coming soon!",
+        levelup_label: "Level up!",
+        levelup_btn: "Continue",
+        toast_earned: "points earned",
+      }
+    };
+ 
+    let currentLang = 'kk';
+    function t(key) { return translations[currentLang][key] || translations['kk'][key] || key; }
+    function applyLang() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.getAttribute('data-i18n'));
+      });
+      renderLeaderboard();
+      renderRewards();
+      updateBanner();
+    }
+ 
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentLang = btn.getAttribute('data-lang');
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyLang();
+      });
+    });
+ 
+    // ─── LEVELS ──────────────────────────────────────────────────────────────
+    const LEVELS = [
+      { min: 0,   name: { kk: 'Жаңадан келген', ru: 'Новичок',       en: 'Newcomer'     }, emoji: '🌱', pts: 10 },
+      { min: 10,  name: { kk: 'Эко-белсенді',  ru: 'Эко-активист',  en: 'Eco-activist' }, emoji: '♻️', pts: 30 },
+      { min: 30,  name: { kk: 'Сұрыптаушы',    ru: 'Сортировщик',   en: 'Sorter'       }, emoji: '🌿', pts: 70 },
+      { min: 70,  name: { kk: 'Эко-батыр',     ru: 'Эко-воин',      en: 'Eco-warrior'  }, emoji: '🦋', pts: 150 },
+      { min: 150, name: { kk: 'Эко-кейіпкер',  ru: 'Эко-герой',     en: 'Eco-hero'     }, emoji: '🌍', pts: 300 },
+      { min: 300, name: { kk: 'Планета сақшысы',ru: 'Защитник планеты',en: 'Planet guardian'}, emoji: '🏆', pts: Infinity },
+    ];
+ 
+    function getLevel(pts) {
+      for (let i = LEVELS.length - 1; i >= 0; i--) {
+        if (pts >= LEVELS[i].min) return { ...LEVELS[i], idx: i };
+      }
+      return { ...LEVELS[0], idx: 0 };
+    }
+ 
+    // ─── STATE ───────────────────────────────────────────────────────────────
+    let state = { points: 0, scans: 0, history: [] };
+ 
+    function saveState() { localStorage.setItem('ecosen_state', JSON.stringify(state)); }
+    function loadState() {
+      try {
+        const s = JSON.parse(localStorage.getItem('ecosen_state'));
+        if (s) state = s;
+      } catch(e) {}
+    }
+ 
+    // ─── GAMIFICATION ────────────────────────────────────────────────────────
+    function awardPoints(pts, material, icon) {
+      const prevLevel = getLevel(state.points);
+      state.points += pts;
+      state.scans += 1;
+      state.history.unshift({ pts, material, icon, time: Date.now() });
+      if (state.history.length > 50) state.history.pop();
+      saveState();
+ 
+      const newLevel = getLevel(state.points);
+ 
+      showToast('+' + pts + ' ' + t('toast_earned'));
+      updateBanner();
+      updateProfile();
+ 
+      if (newLevel.idx > prevLevel.idx) {
+        setTimeout(() => showLevelUp(newLevel), 900);
+      }
+    }
+ 
+    function showToast(msg) {
+      const toast = document.getElementById('points-toast');
+      document.getElementById('toast-text').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+ 
+    function showLevelUp(lvl) {
+      document.getElementById('lu-emoji').textContent = lvl.emoji;
+      document.getElementById('lu-name').textContent = lvl.name[currentLang] || lvl.name['ru'];
+      document.getElementById('lu-sub').textContent = state.points + ' pts';
+      document.getElementById('levelup-overlay').classList.add('show');
+    }
+ 
+    document.getElementById('lu-close').addEventListener('click', () => {
+      document.getElementById('levelup-overlay').classList.remove('show');
+    });
+ 
+    function updateBanner() {
+      const lvl = getLevel(state.points);
+      const nextLvl = LEVELS[lvl.idx + 1];
+      const ptsInLevel = state.points - lvl.min;
+      const ptsNeeded = nextLvl ? nextLvl.pts - lvl.min : lvl.pts - lvl.min;
+      const pct = nextLvl ? Math.min(100, (ptsInLevel / ptsNeeded) * 100) : 100;
+ 
+      document.getElementById('banner-pts').textContent = state.points;
+      document.getElementById('banner-level-name').textContent = lvl.name[currentLang] || lvl.name['ru'];
+      document.getElementById('banner-bar').style.width = pct + '%';
+ 
+      if (nextLvl) {
+        document.getElementById('banner-level-next').textContent = (nextLvl.pts - state.points) + ' pts';
+        document.getElementById('banner-bar-label').textContent = state.points + ' / ' + nextLvl.pts;
+      } else {
+        document.getElementById('banner-level-next').textContent = 'MAX';
+        document.getElementById('banner-bar-label').textContent = '★ MAX';
+      }
+    }
+ 
+    function updateProfile() {
+      const lvl = getLevel(state.points);
+      document.getElementById('stat-pts').textContent = state.points;
+      document.getElementById('stat-scans').textContent = state.scans;
+      document.getElementById('stat-level').textContent = lvl.idx + 1;
+      document.getElementById('profile-avatar').textContent = lvl.emoji;
+      document.getElementById('profile-level-display').textContent =
+        (lvl.idx + 1) + ' · ' + (lvl.name[currentLang] || lvl.name['ru']);
+ 
+      // History
+      const histEl = document.getElementById('history-list');
+      if (state.history.length === 0) {
+        histEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><span>${t('history_empty')}</span></div>`;
+        return;
+      }
+      histEl.innerHTML = state.history.map(h => {
+        const ago = timeAgo(h.time);
+        return `<div class="history-item">
+          <div class="history-icon">${h.icon || '♻️'}</div>
+          <div class="history-info">
+            <div class="history-material">${h.material}</div>
+            <div class="history-time">${ago}</div>
+          </div>
+          <div class="history-pts">+${h.pts}</div>
+        </div>`;
+      }).join('');
+    }
+ 
+    function timeAgo(ts) {
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 60) return diff + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+ 
+    // ─── LEADERBOARD ─────────────────────────────────────────────────────────
+    const MOCK_LEADERS = [
+      { name: 'Aisha K.',  pts: 340, emoji: '🌍' },
+      { name: 'Ruslan M.', pts: 280, emoji: '🏆' },
+      { name: 'Dinara S.', pts: 195, emoji: '🦋' },
+      { name: 'Erik T.',   pts: 130, emoji: '🌿' },
+      { name: 'Zarina B.', pts: 85,  emoji: '♻️' },
+      { name: 'You',       pts: 0,   emoji: '🌱', isMe: true },
+    ];
+ 
+    function renderLeaderboard() {
+      const list = [...MOCK_LEADERS];
+      list[5].pts = state.points;
+      list.sort((a, b) => b.pts - a.pts);
+      const rankClasses = ['gold', 'silver', 'bronze'];
+      document.getElementById('leaderboard-list').innerHTML = list.map((p, i) => {
+        const rc = rankClasses[i] || '';
+        return `<div class="lb-item${p.isMe ? ' me' : ''}">
+          <div class="lb-rank ${rc}">${i + 1}</div>
+          <div class="lb-avatar" style="background:var(--accent-light)">${p.emoji}</div>
+          <div class="lb-name">${p.name}${p.isMe ? ' <span class="lb-me-tag">YOU</span>' : ''}</div>
+          <div class="lb-pts">${p.pts} pts</div>
+        </div>`;
+      }).join('');
+    }
+ 
+    // ─── REWARDS ─────────────────────────────────────────────────────────────
+    const REWARDS = [
+      { emoji: '☕', name: { kk: 'Кофе купоны',   ru: 'Купон на кофе',  en: 'Coffee coupon'  }, desc: { kk: 'Серіктес кафе', ru: 'В кафе-партнёре', en: 'Partner café' }, cost: 100 },
+      { emoji: '🛍️', name: { kk: 'Эко-сөмке',     ru: 'Эко-сумка',      en: 'Eco bag'        }, desc: { kk: 'Қайта қолданылатын', ru: 'Многоразовая', en: 'Reusable bag'  }, cost: 200 },
+      { emoji: '🌳', name: { kk: 'Ағаш отырғызу', ru: 'Посадить дерево', en: 'Plant a tree'   }, desc: { kk: 'Сіздің атыңызбен', ru: 'От вашего имени', en: 'In your name' }, cost: 300 },
+      { emoji: '🎟️', name: { kk: 'Кино билеті',   ru: 'Билет в кино',   en: 'Movie ticket'   }, desc: { kk: 'Серіктес кинотеатр', ru: 'Кинотеатр-партнёр', en: 'Partner cinema' }, cost: 500 },
+    ];
+ 
+    function renderRewards() {
+      document.getElementById('rewards-pts-label').textContent =
+        (currentLang === 'en' ? 'Available: ' : currentLang === 'ru' ? 'Доступно: ' : 'Қолжетімді: ') +
+        state.points + ' pts';
+ 
+      document.getElementById('rewards-grid').innerHTML = REWARDS.map(r => {
+        const canAfford = state.points >= r.cost;
+        return `<div class="reward-card${canAfford ? '' : ' locked'}">
+          ${canAfford ? '' : '<div class="reward-lock">🔒</div>'}
+          <div class="reward-emoji">${r.emoji}</div>
+          <div class="reward-name">${r.name[currentLang] || r.name['ru']}</div>
+          <div class="reward-desc">${r.desc[currentLang] || r.desc['ru']}</div>
+          <div class="reward-cost${canAfford ? ' available' : ''}">★ ${r.cost}</div>
+          <div class="coming-soon-badge">soon</div>
+        </div>`;
+      }).join('');
+    }
+ 
+    // ─── NAV TABS ────────────────────────────────────────────────────────────
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.page).classList.add('active');
+        if (tab.dataset.page === 'profile-page') updateProfile();
+        if (tab.dataset.page === 'leaderboard-page') renderLeaderboard();
+        if (tab.dataset.page === 'rewards-page') renderRewards();
+      });
+    });
+ 
+    // ─── WASTE DATA ──────────────────────────────────────────────────────────
+    const wasteData = {
+      kk: {
+        "Пластик": { icon:"♻️", title:"Пластик",  bin:"Сары контейнер",  forbidden:"Ластанған пластик", tip:"Бөтелкелерді жуып кептіріңіз. PET, HDPE, PP маркаларын бөлек жинаңыз." },
+        "Стекло":  { icon:"🫙", title:"Шыны",     bin:"Жасыл контейнер", forbidden:"Керамика",          tip:"Шыны ыдыстарды жуыңыз. Қақпақтарды алыңыз." },
+        "Метал":   { icon:"🔩", title:"Металл",   bin:"Сұр контейнер",  forbidden:"Аккумулятор",       tip:"Алюминий банкаларды қысыңыз. Болат пен алюминийді бөлектеңіз." },
+        "Картон":  { icon:"📦", title:"Картон",   bin:"Көк контейнер",  forbidden:"Майлы картон",      tip:"Картонды тегіс бүктеп, ылғалдан сақтаңыз." },
+      },
+      ru: {
+        "Пластик": { icon:"♻️", title:"Пластик",  bin:"Жёлтый контейнер", forbidden:"Загрязнённый пластик", tip:"Промойте и высушите бутылки. Собирайте PET, HDPE, PP отдельно." },
+        "Стекло":  { icon:"🫙", title:"Стекло",   bin:"Зелёный контейнер",forbidden:"Керамика",             tip:"Промойте стеклянную тару. Снимайте крышки." },
+        "Метал":   { icon:"🔩", title:"Металл",   bin:"Серый контейнер",  forbidden:"Аккумуляторы",         tip:"Сожмите алюминиевые банки. Разделяйте сталь и алюминий." },
+        "Картон":  { icon:"📦", title:"Картон",   bin:"Синий контейнер",  forbidden:"Жирный картон",        tip:"Сложите картон плоско и защитите от влаги перед сдачей." },
+      },
+      en: {
+        "Пластик": { icon:"♻️", title:"Plastic",  bin:"Yellow bin",  forbidden:"Soiled plastic", tip:"Rinse and dry bottles. Separate PET, HDPE, PP types." },
+        "Стекло":  { icon:"🫙", title:"Glass",    bin:"Green bin",   forbidden:"Ceramics",       tip:"Rinse glass containers. Remove caps and lids." },
+        "Метал":   { icon:"🔩", title:"Metal",    bin:"Grey bin",    forbidden:"Batteries",      tip:"Crush aluminium cans. Separate steel from aluminium." },
+        "Картон":  { icon:"📦", title:"Cardboard",bin:"Blue bin",    forbidden:"Greasy cardboard",tip:"Flatten boxes and keep dry before recycling." },
+      }
+    };
+ 
+    // ─── MAP ─────────────────────────────────────────────────────────────────
+    let map = null, mapInitialized = false;
+    const recyclingPoints = [
+      { lat: 43.6454, lng: 51.1693, title: "Пункт приема пластика (14 мкр)" },
+      { lat: 43.6354, lng: 51.1593, title: "Эко-станция (11 мкр)" },
+      { lat: 43.6554, lng: 51.1493, title: "Сбор картона и стекла (8 мкр)" }
+    ];
+ 
+    function initMap() {
+      map = L.map('map').setView([43.6481, 51.1643], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+      recyclingPoints.forEach(p => {
+        L.marker([p.lat, p.lng]).addTo(map).bindPopup(`<b>${p.title}</b><br>Пункт переработки`);
+      });
+      mapInitialized = true;
+    }
+ 
+    document.getElementById('btn-map').addEventListener('click', () => {
+      const mw = document.getElementById('map-wrapper');
+      mw.classList.toggle('visible');
+      if (mw.classList.contains('visible')) {
+        if (!mapInitialized) initMap();
+        else map.invalidateSize();
+      }
+    });
+ 
+    // ─── MODEL ───────────────────────────────────────────────────────────────
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/4cC54KsZN/";
+    let model = null, imageReady = false;
+ 
+    const imageEl     = document.getElementById('uploaded-image');
+    const placeholder = document.getElementById('upload-placeholder');
+    const uploadZone  = document.getElementById('upload-zone');
+    const loadingCard = document.getElementById('loading-card');
+    const reportCard  = document.getElementById('report-card');
+ 
+    async function loadModel() {
+      try { model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json"); }
+      catch(e) { console.warn("Model load error:", e); }
+    }
+ 
+    document.getElementById('image-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        imageEl.src = ev.target.result;
+        imageEl.style.display = 'block';
+        placeholder.style.display = 'none';
+        uploadZone.classList.add('has-image');
+        imageReady = true;
+        reportCard.classList.remove('visible');
+        loadingCard.classList.remove('visible');
+      };
+      reader.readAsDataURL(file);
+    });
+ 
+    document.getElementById('btn-analyze').addEventListener('click', async () => {
+      if (!imageReady) { alert(t('no_image')); return; }
+      if (!model) { loadingCard.classList.add('visible'); await loadModel(); }
+      loadingCard.classList.add('visible');
+      reportCard.classList.remove('visible');
+      setTimeout(async () => {
+        await predict();
+        loadingCard.classList.remove('visible');
+      }, 400);
+    });
+ 
+    async function predict() {
+      if (!model) { loadingCard.classList.remove('visible'); return; }
+      const predictions = await model.predict(imageEl);
+      predictions.sort((a, b) => b.probability - a.probability);
+      const best = predictions[0];
+      const pct = best.probability;
+      const langData = wasteData[currentLang] || wasteData['kk'];
+      const info = (pct >= 0.4 && langData[best.className]) ? langData[best.className] : null;
+ 
+      const badge = document.getElementById('confidence-badge');
+      badge.textContent = (pct * 100).toFixed(1) + '%';
+      badge.className = 'confidence-badge' + (pct < 0.4 ? ' low' : '');
+      document.getElementById('bar-fill').style.width = (pct * 100) + '%';
+ 
+      let detectedIcon = 'ℹ️';
+      let detectedTitle = t('not_detected');
+ 
+      if (info) {
+        detectedIcon = info.icon;
+        detectedTitle = info.title;
+        document.getElementById('report-icon').textContent = info.icon;
+        document.getElementById('report-title').textContent = info.title;
+        document.getElementById('info-bin').textContent = info.bin;
+        document.getElementById('info-forbidden').textContent = info.forbidden;
+        document.getElementById('info-tip').textContent = info.tip;
+ 
+        // Award points based on confidence
+        const pts = pct >= 0.8 ? 15 : pct >= 0.6 ? 10 : 5;
+        awardPoints(pts, info.title, info.icon);
+      } else {
+        document.getElementById('report-icon').textContent = 'ℹ️';
+        document.getElementById('report-title').textContent = t('not_detected');
+        document.getElementById('info-bin').textContent = '—';
+        document.getElementById('info-forbidden').textContent = '—';
+        document.getElementById('info-tip').textContent = best.className + ' (' + (pct*100).toFixed(1) + '%)';
+        // Still award 3 pts for trying
+        awardPoints(3, best.className, '🔍');
+      }
+ 
+      reportCard.classList.add('visible');
+    }
+ 
+    // ─── INIT ────────────────────────────────────────────────────────────────
+    loadState();
+    updateBanner();
+    renderLeaderboard();
+    renderRewards();
+    loadModel();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BACKEND API INTEGRATION
+    // ═══════════════════════════════════════════════════════════════════════
+    const API_BASE = 'https://ecosen-api.onrender.com'; // ← замени на свой URL после деплоя
+
+    let authToken = localStorage.getItem('ecosen_token') || null;
+    let currentUser = null;
+
+    // ── API helper ──────────────────────────────────────────────────────────
+    async function apiCall(method, path, body = null) {
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+      };
+      if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
+      if (body) opts.body = JSON.stringify(body);
+      try {
+        const res = await fetch(API_BASE + path, opts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      } catch (e) {
+        console.warn('API error:', e.message);
+        throw e;
+      }
+    }
+
+    // ── Load user from server if token exists ───────────────────────────────
+    async function tryAutoLogin() {
+      if (!authToken) { showAuthModal(); return; }
+      try {
+        const data = await apiCall('GET', '/api/auth/me');
+        currentUser = data.user;
+        syncServerState(currentUser);
+        hideAuthModal();
+        updateProfileName();
+      } catch {
+        localStorage.removeItem('ecosen_token');
+        authToken = null;
+        showAuthModal();
+      }
+    }
+
+    function syncServerState(user) {
+      state.points = user.points;
+      state.scans = user.scans;
+      saveState();
+      updateBanner();
+      updateProfile();
+    }
+
+    function updateProfileName() {
+      if (!currentUser) return;
+      const el = document.getElementById('profile-name-display');
+      if (el) el.textContent = currentUser.name;
+      const joined = document.getElementById('profile-joined');
+      if (joined) {
+        const d = new Date(currentUser.created_at);
+        joined.textContent = d.toLocaleDateString();
+      }
+    }
+
+    // ── Override awardPoints to also POST to server ─────────────────────────
+    const _originalAwardPoints = awardPoints;
+    async function awardPointsWithSync(pts, material, icon) {
+      _originalAwardPoints(pts, material, icon);  // update local state immediately
+      if (!authToken || !currentUser) return;
+      try {
+        const res = await apiCall('POST', '/api/user/scan', { material, points: pts, icon });
+        if (res.user) {
+          state.points = res.user.points;
+          state.scans = res.user.scans;
+          updateBanner();
+          updateProfile();
+        }
+      } catch (e) {
+        console.warn('Could not sync scan to server:', e.message);
+      }
+    }
+
+    // ── Override leaderboard to load from server ────────────────────────────
+    async function renderLeaderboardFromServer() {
+      if (!authToken) { renderLeaderboard(); return; }
+      try {
+        const data = await apiCall('GET', '/api/user/leaderboard');
+        const list = data.leaderboard;
+        const myId = currentUser?.id;
+        const rankClasses = ['gold', 'silver', 'bronze'];
+        document.getElementById('leaderboard-list').innerHTML = list.map((p, i) => {
+          const isMe = p.id === myId;
+          const rc = rankClasses[i] || '';
+          return `<div class="lb-item${isMe ? ' me' : ''}">
+            <div class="lb-rank ${rc}">${i + 1}</div>
+            <div class="lb-avatar" style="background:var(--accent-light)">🌿</div>
+            <div class="lb-name">${p.name}${isMe ? ' <span class="lb-me-tag">YOU</span>' : ''}</div>
+            <div class="lb-pts">${p.points} pts</div>
+          </div>`;
+        }).join('');
+        if (data.my_rank && data.my_rank > 10) {
+          document.getElementById('leaderboard-list').insertAdjacentHTML('beforeend',
+            `<div style="text-align:center;padding:12px;font-size:13px;color:var(--text-secondary)">Ваш рейтинг: #${data.my_rank}</div>`
+          );
+        }
+      } catch { renderLeaderboard(); }
+    }
+
+    // ── Override history to load from server ────────────────────────────────
+    async function loadHistoryFromServer() {
+      if (!authToken) { updateProfile(); return; }
+      try {
+        const history = await apiCall('GET', '/api/user/history');
+        const histEl = document.getElementById('history-list');
+        if (!history.length) {
+          histEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><span>История пуста</span></div>`;
+          return;
+        }
+        histEl.innerHTML = history.map(h => {
+          const ago = timeAgo(new Date(h.created_at).getTime());
+          return `<div class="history-item">
+            <div class="history-icon">${h.icon || '♻️'}</div>
+            <div class="history-info">
+              <div class="history-material">${h.material}</div>
+              <div class="history-time">${ago}</div>
+            </div>
+            <div class="history-pts">+${h.points}</div>
+          </div>`;
+        }).join('');
+      } catch { updateProfile(); }
+    }
+
+    // Patch nav tab clicks to load server data
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        if (tab.dataset.page === 'leaderboard-page') renderLeaderboardFromServer();
+        if (tab.dataset.page === 'profile-page') loadHistoryFromServer();
+      });
+    });
+
+    // Patch predict to use server sync
+    const origPredict = predict;
+    predict = async function() {
+      // before predict ran, we intercepted awardPoints; patch it here
+    };
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════
+    // AUTH MODAL — 3-step: form → sending → enter code
+    // ══════════════════════════════════════════════════════════════════════
+    function buildInput(id, type, placeholder) {
+      return `<input id="${id}" type="${type}" placeholder="${placeholder}" style="
+        width:100%;padding:12px 14px;border:1px solid #e5e3dd;border-radius:10px;
+        font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;
+      " />`;
+    }
+
+    const authModalHTML = `
+    <div id="auth-modal" style="
+      position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    ">
+      <div style="
+        background:#fff;border-radius:20px;padding:32px 28px;
+        max-width:340px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.18);
+      ">
+        <!-- Logo -->
+        <div style="text-align:center;margin-bottom:22px;">
+          <span style="font-size:34px">🌿</span>
+          <h2 style="font-size:21px;font-weight:600;margin:6px 0 0;color:#1a1a18;">EcoSen</h2>
+        </div>
+
+        <!-- Error box -->
+        <div id="auth-error" style="
+          display:none;background:#fdecea;color:#c0392b;
+          border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;
+        "></div>
+
+        <!-- STEP 1: Login form -->
+        <div id="auth-step-login">
+          <div style="margin-bottom:12px;">${buildInput('auth-email','email','Email')}</div>
+          <div style="margin-bottom:18px;">${buildInput('auth-password','password','Пароль')}</div>
+          <button id="auth-login-btn" style="
+            width:100%;padding:14px;background:#3a7d44;color:#fff;border:none;
+            border-radius:10px;font-size:15px;font-weight:600;
+            font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;
+          ">Кіру / Войти</button>
+          <div style="text-align:center;margin-bottom:10px;">
+            <button id="auth-goto-register" style="
+              background:none;border:none;font-size:13px;color:#3a7d44;
+              font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:500;
+            ">Тіркелу / Зарегистрироваться →</button>
+          </div>
+          <div style="text-align:center;">
+            <button id="auth-skip-btn" style="
+              background:none;border:none;font-size:12px;color:#aaa8a0;
+              font-family:'DM Sans',sans-serif;cursor:pointer;
+            ">Без аккаунта</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Register form -->
+        <div id="auth-step-register" style="display:none;">
+          <div style="margin-bottom:12px;">${buildInput('auth-reg-name','text','Атыңыз / Имя')}</div>
+          <div style="margin-bottom:12px;">${buildInput('auth-reg-email','email','Email')}</div>
+          <div style="margin-bottom:18px;">${buildInput('auth-reg-password','password','Пароль (мин. 6 символов)')}</div>
+          <button id="auth-send-code-btn" style="
+            width:100%;padding:14px;background:#3a7d44;color:#fff;border:none;
+            border-radius:10px;font-size:15px;font-weight:600;
+            font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;
+          ">Отправить код на email →</button>
+          <div style="text-align:center;">
+            <button id="auth-back-to-login" style="
+              background:none;border:none;font-size:13px;color:#7a7870;
+              font-family:'DM Sans',sans-serif;cursor:pointer;
+            ">← Назад ко входу</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: Enter code -->
+        <div id="auth-step-code" style="display:none;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:32px;margin-bottom:8px;">📬</div>
+            <div style="font-size:15px;font-weight:600;color:#1a1a18;">Код отправлен!</div>
+            <div id="auth-code-email-hint" style="font-size:13px;color:#7a7870;margin-top:4px;"></div>
+            <div style="font-size:12px;color:#aaa8a0;margin-top:4px;">Действует 15 минут</div>
+          </div>
+          <!-- 6 individual digit boxes -->
+          <div id="auth-code-boxes" style="
+            display:flex;gap:8px;justify-content:center;margin-bottom:20px;
+          ">
+            ${[0,1,2,3,4,5].map(i => `
+            <input id="auth-digit-${i}" type="text" maxlength="1" inputmode="numeric"
+              style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;
+                     font-family:'DM Mono',monospace;border:2px solid #e5e3dd;border-radius:10px;
+                     outline:none;color:#1a1a18;background:#f7f6f3;" />
+            `).join('')}
+          </div>
+          <button id="auth-verify-btn" style="
+            width:100%;padding:14px;background:#3a7d44;color:#fff;border:none;
+            border-radius:10px;font-size:15px;font-weight:600;
+            font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;
+          ">Подтвердить ✓</button>
+          <div style="text-align:center;">
+            <button id="auth-resend-btn" style="
+              background:none;border:none;font-size:13px;color:#3a7d44;
+              font-family:'DM Sans',sans-serif;cursor:pointer;
+            ">Отправить новый код</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    function showAuthModal() {
+      if (!document.getElementById('auth-modal')) {
+        document.body.insertAdjacentHTML('beforeend', authModalHTML);
+        setupAuthModal();
+      }
+      document.getElementById('auth-modal').style.display = 'flex';
+    }
+
+    function hideAuthModal() {
+      const m = document.getElementById('auth-modal');
+      if (m) m.style.display = 'none';
+    }
+
+    function setupAuthModal() {
+      let pendingEmail = '';
+
+      const errBox = document.getElementById('auth-error');
+      function showErr(msg) { errBox.textContent = msg; errBox.style.display = 'block'; }
+      function clearErr() { errBox.style.display = 'none'; }
+
+      function showStep(step) {
+        ['login','register','code'].forEach(s => {
+          document.getElementById('auth-step-' + s).style.display = s === step ? 'block' : 'none';
+        });
+        clearErr();
+      }
+
+      // ── Navigation ────────────────────────────────────────────────────────
+      document.getElementById('auth-goto-register').addEventListener('click', () => showStep('register'));
+      document.getElementById('auth-back-to-login').addEventListener('click', () => showStep('login'));
+      document.getElementById('auth-skip-btn').addEventListener('click', () => {
+        hideAuthModal();
+        showToast('⚠️ Данные сохраняются только на этом устройстве');
+      });
+
+      // ── LOGIN ──────────────────────────────────────────────────────────────
+      document.getElementById('auth-login-btn').addEventListener('click', async () => {
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+        if (!email || !password) { showErr('Введите email и пароль'); return; }
+        clearErr();
+        const btn = document.getElementById('auth-login-btn');
+        btn.textContent = '...'; btn.disabled = true;
+        try {
+          const data = await apiCall('POST', '/api/auth/login', { email, password });
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem('ecosen_token', authToken);
+          syncServerState(currentUser);
+          updateProfileName();
+          hideAuthModal();
+          showToast('✅ Вы вошли как ' + currentUser.name);
+        } catch (e) {
+          showErr(e.message);
+        } finally {
+          btn.textContent = 'Кіру / Войти'; btn.disabled = false;
+        }
+      });
+
+      // ── SEND CODE ─────────────────────────────────────────────────────────
+      document.getElementById('auth-send-code-btn').addEventListener('click', async () => {
+        const name = document.getElementById('auth-reg-name').value.trim();
+        const email = document.getElementById('auth-reg-email').value.trim();
+        const password = document.getElementById('auth-reg-password').value;
+        if (!name || !email || !password) { showErr('Заполните все поля'); return; }
+        clearErr();
+        const btn = document.getElementById('auth-send-code-btn');
+        btn.textContent = 'Отправка...'; btn.disabled = true;
+        try {
+          await apiCall('POST', '/api/auth/send-code', { name, email, password });
+          pendingEmail = email;
+          document.getElementById('auth-code-email-hint').textContent = 'Письмо отправлено на ' + email;
+          showStep('code');
+          setupCodeInputs();
+        } catch (e) {
+          showErr(e.message);
+        } finally {
+          btn.textContent = 'Отправить код на email →'; btn.disabled = false;
+        }
+      });
+
+      // ── CODE INPUT: auto-advance between boxes ────────────────────────────
+      function setupCodeInputs() {
+        for (let i = 0; i < 6; i++) {
+          const inp = document.getElementById('auth-digit-' + i);
+          inp.value = '';
+          inp.addEventListener('input', () => {
+            inp.value = inp.value.replace(/[^0-9]/g, '').slice(-1);
+            if (inp.value && i < 5) document.getElementById('auth-digit-' + (i+1)).focus();
+          });
+          inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !inp.value && i > 0)
+              document.getElementById('auth-digit-' + (i-1)).focus();
+          });
+          inp.addEventListener('paste', (e) => {
+            const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
+            if (text.length >= 6) {
+              for (let j = 0; j < 6; j++) {
+                const d = document.getElementById('auth-digit-' + j);
+                if (d) d.value = text[j] || '';
+              }
+              document.getElementById('auth-digit-5').focus();
+              e.preventDefault();
+            }
+          });
+        }
+        document.getElementById('auth-digit-0').focus();
+      }
+
+      function getCode() {
+        return [0,1,2,3,4,5].map(i => document.getElementById('auth-digit-' + i).value).join('');
+      }
+
+      function highlightCodeError() {
+        for (let i = 0; i < 6; i++) {
+          const d = document.getElementById('auth-digit-' + i);
+          d.style.borderColor = '#c0392b';
+          d.style.background = '#fdecea';
+          setTimeout(() => { d.style.borderColor = '#e5e3dd'; d.style.background = '#f7f6f3'; }, 1500);
+        }
+      }
+
+      // ── VERIFY CODE ───────────────────────────────────────────────────────
+      document.getElementById('auth-verify-btn').addEventListener('click', async () => {
+        const code = getCode();
+        if (code.length < 6) { showErr('Введите все 6 цифр'); return; }
+        clearErr();
+        const btn = document.getElementById('auth-verify-btn');
+        btn.textContent = 'Проверка...'; btn.disabled = true;
+        try {
+          const data = await apiCall('POST', '/api/auth/verify-code', { email: pendingEmail, code });
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem('ecosen_token', authToken);
+          syncServerState(currentUser);
+          updateProfileName();
+          hideAuthModal();
+          showToast('🎉 Аккаунт создан! Добро пожаловать, ' + currentUser.name);
+        } catch (e) {
+          highlightCodeError();
+          showErr(e.message);
+        } finally {
+          btn.textContent = 'Подтвердить ✓'; btn.disabled = false;
+        }
+      });
+
+      // ── RESEND ────────────────────────────────────────────────────────────
+      document.getElementById('auth-resend-btn').addEventListener('click', async () => {
+        if (!pendingEmail) return;
+        clearErr();
+        const btn = document.getElementById('auth-resend-btn');
+        btn.textContent = 'Отправка...'; btn.disabled = true;
+        try {
+          await apiCall('POST', '/api/auth/resend-code', { email: pendingEmail });
+          document.getElementById('auth-code-email-hint').textContent = 'Новый код отправлен на ' + pendingEmail;
+          showToast('📬 Новый код отправлен');
+          setupCodeInputs();
+        } catch (e) {
+          showErr(e.message);
+        } finally {
+          btn.textContent = 'Отправить новый код'; btn.disabled = false;
+        }
+      });
+    }
+
+    // ── Patch awardPoints to sync to server ──────────────────────────────────
+    const _awardPointsOrig = awardPoints;
+    function awardPoints(pts, material, icon) {
+      _awardPointsOrig(pts, material, icon);
+      if (authToken) {
+        apiCall('POST', '/api/user/scan', { material, points: pts, icon })
+          .then(res => {
+            if (res?.user) {
+              state.points = res.user.points;
+              state.scans = res.user.scans;
+              updateBanner();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    // ── Start ────────────────────────────────────────────────────────────────
+    tryAutoLogin();
+  </script>
+</body>
+</html>
