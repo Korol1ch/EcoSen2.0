@@ -1402,11 +1402,15 @@ main {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
+        imageEl.onload = () => {
+          imageReady = true;
+          reportCard.classList.remove('visible');
+          loadingCard.classList.remove('visible');
+        };
         imageEl.src = ev.target.result;
         imageEl.style.display = 'block';
         placeholder.style.display = 'none';
         uploadZone.classList.add('has-image');
-        imageReady = true;
         reportCard.classList.remove('visible');
         loadingCard.classList.remove('visible');
       };
@@ -1433,7 +1437,23 @@ main {
  
     async function predict() {
       if (!model) { loadingCard.classList.remove('visible'); return; }
-      const predictions = await model.predict(imageEl);
+      // Wait for image to be fully loaded before predicting
+      if (!imageEl.complete || imageEl.naturalWidth === 0) {
+        await new Promise((resolve, reject) => {
+          imageEl.onload = resolve;
+          imageEl.onerror = reject;
+          setTimeout(reject, 5000); // timeout 5s
+        }).catch(() => {});
+      }
+      let predictions;
+      try {
+        predictions = await model.predict(imageEl);
+      } catch(e) {
+        console.error('Predict error:', e);
+        loadingCard.classList.remove('visible');
+        setModelStatus('❌ Ошибка анализа: ' + e.message, '#e53935');
+        return;
+      }
       predictions.sort((a, b) => b.probability - a.probability);
       const best = predictions[0];
       const pct = best.probability;
@@ -1478,7 +1498,7 @@ main {
     updateBanner();
     renderLeaderboard();
     renderRewards();
-    loadModel();
+    // loadModel() already called above at startup
 
     // ═══════════════════════════════════════════════════════════════════════
     // BACKEND API INTEGRATION
