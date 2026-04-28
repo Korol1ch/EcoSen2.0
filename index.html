@@ -1144,10 +1144,10 @@ main {
     // ─── STATE ───────────────────────────────────────────────────────────────
     let state = { points: 0, scans: 0, history: [] };
  
-    function saveState() { localStorage.setItem('ecosen_state', JSON.stringify(state)); }
+    function saveState() { safeStorage.setItem('ecosen_state', JSON.stringify(state)); }
     function loadState() {
       try {
-        const s = JSON.parse(localStorage.getItem('ecosen_state'));
+        const s = JSON.parse(safeStorage.getItem('ecosen_state'));
         if (s) state = s;
       } catch(e) {}
     }
@@ -1525,7 +1525,15 @@ main {
     // ═══════════════════════════════════════════════════════════════════════
     const API_BASE = 'https://ecosen2-0.onrender.com'; // ← замени на свой URL после деплоя
 
-    let authToken = localStorage.getItem('ecosen_token') || null;
+    // Safe storage — fallback to memory if localStorage blocked (Safari ITP, Firefox ETP)
+    const _memStore = {};
+    const safeStorage = {
+      getItem: (k) => { try { return localStorage.getItem(k); } catch { return _memStore[k] ?? null; } },
+      setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} _memStore[k] = v; },
+      removeItem: (k) => { try { localStorage.removeItem(k); } catch {} delete _memStore[k]; },
+    };
+
+    let authToken = safeStorage.getItem('ecosen_token') || null;
     let currentUser = null;
 
     // ── API helper ──────────────────────────────────────────────────────────
@@ -1557,7 +1565,7 @@ main {
         hideAuthModal();
         updateProfileName();
       } catch {
-        localStorage.removeItem('ecosen_token');
+        safeStorage.removeItem('ecosen_token');
         authToken = null;
         showAuthModal();
       }
@@ -1818,7 +1826,7 @@ main {
           const data = await apiCall('POST', '/api/auth/login', { email, password });
           authToken = data.token;
           currentUser = data.user;
-          localStorage.setItem('ecosen_token', authToken);
+          safeStorage.setItem('ecosen_token', authToken);
           syncServerState(currentUser);
           updateProfileName();
           hideAuthModal();
@@ -1904,7 +1912,7 @@ main {
           const data = await apiCall('POST', '/api/auth/verify-code', { email: pendingEmail, code });
           authToken = data.token;
           currentUser = data.user;
-          localStorage.setItem('ecosen_token', authToken);
+          safeStorage.setItem('ecosen_token', authToken);
           syncServerState(currentUser);
           updateProfileName();
           hideAuthModal();

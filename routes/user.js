@@ -36,7 +36,8 @@ router.get('/history', async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('[GET /history] Error:', err.message, err.stack);
+    res.status(500).json({ error: 'Server error', detail: err.message });
   }
 });
 
@@ -56,7 +57,8 @@ router.get('/leaderboard', async (req, res) => {
     );
     res.json({ leaderboard: top.rows, my_rank: myRank.rows[0]?.rank || null });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('[GET /leaderboard] Error:', err.message, err.stack);
+    res.status(500).json({ error: 'Server error', detail: err.message });
   }
 });
 

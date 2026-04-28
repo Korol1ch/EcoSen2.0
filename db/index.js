@@ -12,7 +12,7 @@ const INIT_SQL = `
   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
   CREATE TABLE IF NOT EXISTS users (
-    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name          VARCHAR(100) NOT NULL,
     email         VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -27,7 +27,7 @@ const INIT_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS email_verifications (
-    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email      VARCHAR(255) NOT NULL,
     name       VARCHAR(100) NOT NULL,
     pass_hash  VARCHAR(255) NOT NULL,
@@ -39,7 +39,7 @@ const INIT_SQL = `
   CREATE INDEX IF NOT EXISTS idx_email_verif_email ON email_verifications(email);
 
   CREATE TABLE IF NOT EXISTS stations (
-    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name           VARCHAR(100) NOT NULL,
     lat            FLOAT NOT NULL,
     lng            FLOAT NOT NULL,
@@ -50,7 +50,7 @@ const INIT_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS operators (
-    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name          VARCHAR(100) NOT NULL,
     email         VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -62,7 +62,7 @@ const INIT_SQL = `
   CREATE INDEX IF NOT EXISTS idx_operators_station ON operators(station_id);
 
   CREATE TABLE IF NOT EXISTS transactions (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
     station_id  UUID REFERENCES stations(id) ON DELETE SET NULL,
     operator_id UUID REFERENCES operators(id) ON DELETE SET NULL,
@@ -80,7 +80,7 @@ const INIT_SQL = `
   CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
 
   CREATE TABLE IF NOT EXISTS anomaly_logs (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
     station_id  UUID REFERENCES stations(id) ON DELETE SET NULL,
     operator_id UUID REFERENCES operators(id) ON DELETE SET NULL,
@@ -92,7 +92,7 @@ const INIT_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS achievements (
-    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code          VARCHAR(50) UNIQUE NOT NULL,
     name          VARCHAR(100) NOT NULL,
     description   TEXT,
@@ -102,7 +102,7 @@ const INIT_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS user_achievements (
-    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id        UUID REFERENCES users(id) ON DELETE CASCADE,
     achievement_id UUID REFERENCES achievements(id) ON DELETE CASCADE,
     earned_at      TIMESTAMP DEFAULT NOW(),
@@ -111,7 +111,90 @@ const INIT_SQL = `
   CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
 
   CREATE TABLE IF NOT EXISTS notifications (
-    id       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id  UUID REFERENCES users(id) ON DELETE CASCADE,
+    type     VARCHAR(50) NOT NULL,
+    title    VARCHAR(200) NOT NULL,
+    body     TEXT,
+    is_read  BOOLEAN DEFAULT FALSE,
+    sent_at  TIMESTAMP DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+
+  CREATE TABLE IF NOT EXISTS stations (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name           VARCHAR(100) NOT NULL,
+    lat            FLOAT NOT NULL,
+    lng            FLOAT NOT NULL,
+    city           VARCHAR(100) DEFAULT 'Актау',
+    is_active      BOOLEAN DEFAULT TRUE,
+    material_rates JSONB DEFAULT '{"plastic":10,"glass":15,"paper":5,"metal":20}',
+    created_at     TIMESTAMP DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS operators (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name          VARCHAR(100) NOT NULL,
+    email         VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    station_id    UUID REFERENCES stations(id) ON DELETE SET NULL,
+    role          VARCHAR(20) DEFAULT 'operator' CHECK (role IN ('operator','admin')),
+    is_active     BOOLEAN DEFAULT TRUE,
+    created_at    TIMESTAMP DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_operators_station ON operators(station_id);
+
+  CREATE TABLE IF NOT EXISTS transactions (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+    station_id  UUID REFERENCES stations(id) ON DELETE SET NULL,
+    operator_id UUID REFERENCES operators(id) ON DELETE SET NULL,
+    material    VARCHAR(50) NOT NULL,
+    weight_kg   FLOAT,
+    points      INTEGER NOT NULL,
+    co2_saved   FLOAT DEFAULT 0,
+    icon        VARCHAR(10),
+    source      VARCHAR(20) DEFAULT 'ai_scan' CHECK (source IN ('ai_scan','station','manual')),
+    status      VARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','pending','rejected')),
+    created_at  TIMESTAMP DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_transactions_station_id ON transactions(station_id);
+  CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
+
+  CREATE TABLE IF NOT EXISTS anomaly_logs (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+    station_id  UUID REFERENCES stations(id) ON DELETE SET NULL,
+    operator_id UUID REFERENCES operators(id) ON DELETE SET NULL,
+    type        VARCHAR(50),
+    description TEXT,
+    severity    VARCHAR(20) DEFAULT 'low' CHECK (severity IN ('low','medium','high')),
+    resolved    BOOLEAN DEFAULT FALSE,
+    created_at  TIMESTAMP DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS achievements (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code          VARCHAR(50) UNIQUE NOT NULL,
+    name          VARCHAR(100) NOT NULL,
+    description   TEXT,
+    icon          VARCHAR(10) DEFAULT '🏆',
+    condition     JSONB NOT NULL,
+    points_reward INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS user_achievements (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        UUID REFERENCES users(id) ON DELETE CASCADE,
+    achievement_id UUID REFERENCES achievements(id) ON DELETE CASCADE,
+    earned_at      TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, achievement_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id);
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id  UUID REFERENCES users(id) ON DELETE CASCADE,
     type     VARCHAR(50) NOT NULL,
     title    VARCHAR(200) NOT NULL,
