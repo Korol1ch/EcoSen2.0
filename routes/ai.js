@@ -240,3 +240,72 @@ router.get('/materials', (req, res) => {
 });
 
 module.exports = router;
+
+// ── POST /api/ai/chat ─────────────────────────────────────────────────────────
+// Чат с EcoBot (Gemini). Body: { message: string, context?: string }
+// Требует авторизации.
+const { askGemini } = require('../services/gemini');
+
+router.post('/chat', authMiddleware, async (req, res) => {
+  try {
+    const { message, context } = req.body;
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'Поле message обязательно' });
+    }
+    if (message.length > 1000) {
+      return res.status(400).json({ error: 'Сообщение слишком длинное (макс. 1000 символов)' });
+    }
+
+    const reply = await askGemini(message.trim(), context || '');
+    res.json({ reply });
+  } catch (err) {
+    console.error('[AI /chat] Gemini error:', err.message);
+    if (err.message.includes('GEMINI_API_KEY')) {
+      return res.status(503).json({ error: 'AI-ассистент не настроен' });
+    }
+    res.status(502).json({ error: 'Ошибка AI-ассистента. Попробуйте позже.' });
+  }
+});
+
+// ── POST /api/ai/analyze ──────────────────────────────────────────────────────
+// Gemini анализирует тип мусора по описанию.
+// Body: { description: string }  → { material, advice, eco_tip }
+router.post('/analyze', authMiddleware, async (req, res) => {
+  try {
+    const { description } = req.body;
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({ error: 'Поле description обязательно' });
+    }
+
+    const prompt = `Пользователь описывает предмет для утилизации: "${description.trim()}"
+
+Определи тип материала (plastic/glass/paper/cardboard/metal/aluminum/electronics/battery/organic/textile/other).
+Дай краткий совет по утилизации (2-3 предложения) и один интересный экологический факт.
+
+Ответь строго в JSON формате:
+{
+  "material": "<ключ материала>",
+  "material_name": "<название на русском>",
+  "recyclable": true/false,
+  "advice": "<совет по утилизации>",
+  "eco_tip": "<экологический факт>"
+}`;
+
+    const raw = await askGemini(prompt);
+    // Strip possible markdown fences
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // Enrich with static data if available
+    const staticData = WASTE_ADVICE[parsed.material] || null;
+
+    res.json({
+      ...parsed,
+      where: staticData?.where || null,
+      preparation: staticData?.preparation || [],
+    });
+  } catch (err) {
+    console.error('[AI /analyze] error:', err.message);
+    res.status(502).json({ error: 'Ошибка анализа. Попробуйте позже.' });
+  }
+});

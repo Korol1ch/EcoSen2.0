@@ -81,6 +81,8 @@ app.get('/', (req, res) => {
         'GET  /api/ai/advice/:material     ← советы по типу мусора',
         'POST /api/ai/advice               ← с весом + станцией → preview баллов',
         'GET  /api/ai/materials            ← список всех материалов',
+        'POST /api/ai/chat                 ← чат с EcoBot (Gemini AI)',
+        'POST /api/ai/analyze              ← анализ мусора по описанию (Gemini AI)',
       ],
       achievements: [
         'GET  /api/achievements            ← все + статус для пользователя',
