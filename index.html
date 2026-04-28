@@ -859,6 +859,8 @@ main {
         </label>
         <input type="file" id="image-upload" accept="image/*">
  
+        <div id="model-status" style="font-size:12px;text-align:center;padding:6px 0;color:#888;display:none;"></div>
+
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-analyze">
             <span>🔍</span>
@@ -1361,18 +1363,39 @@ main {
  
     // ─── MODEL ───────────────────────────────────────────────────────────────
     const MODEL_URL = "https://teachablemachine.withgoogle.com/models/4cC54KsZN/";
-    let model = null, imageReady = false;
+    let model = null, imageReady = false, modelLoading = false;
  
     const imageEl     = document.getElementById('uploaded-image');
     const placeholder = document.getElementById('upload-placeholder');
     const uploadZone  = document.getElementById('upload-zone');
     const loadingCard = document.getElementById('loading-card');
     const reportCard  = document.getElementById('report-card');
- 
-    async function loadModel() {
-      try { model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json"); }
-      catch(e) { console.warn("Model load error:", e); }
+    const modelStatus = document.getElementById('model-status');
+
+    function setModelStatus(msg, color) {
+      modelStatus.style.display = msg ? 'block' : 'none';
+      modelStatus.style.color = color || '#888';
+      modelStatus.textContent = msg;
     }
+
+    async function loadModel() {
+      if (modelLoading) return;
+      modelLoading = true;
+      setModelStatus('⏳ Загрузка модели...', '#888');
+      try {
+        model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+        setModelStatus('✅ Модель готова', '#4caf50');
+        setTimeout(() => setModelStatus(''), 2000);
+      } catch(e) {
+        console.warn("Model load error:", e);
+        model = null;
+        setModelStatus('❌ Не удалось загрузить модель. Проверьте интернет и попробуйте снова.', '#e53935');
+      }
+      modelLoading = false;
+    }
+
+    // Pre-load model on page open
+    loadModel();
  
     document.getElementById('image-upload').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -1392,7 +1415,14 @@ main {
  
     document.getElementById('btn-analyze').addEventListener('click', async () => {
       if (!imageReady) { alert(t('no_image')); return; }
-      if (!model) { loadingCard.classList.add('visible'); await loadModel(); }
+      if (!model) {
+        setModelStatus('⏳ Загрузка модели...', '#888');
+        await loadModel();
+      }
+      if (!model) {
+        setModelStatus('❌ Модель недоступна. Проверьте интернет и нажмите ещё раз.', '#e53935');
+        return;
+      }
       loadingCard.classList.add('visible');
       reportCard.classList.remove('visible');
       setTimeout(async () => {
