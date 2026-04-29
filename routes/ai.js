@@ -295,26 +295,43 @@ ${staticContext}
 
 urgency: "now" = можно выбросить в обычный бак, "soon" = нужен специальный пункт, "special" = опасный материал требует особого обращения.`;
 
-    let raw;
+    // Пробуем Gemini, при ошибке — graceful fallback на статичные данные
+    let raw = null;
     try {
       raw = await askGemini(prompt);
     } catch (geminiErr) {
-      console.error('[AI /waste-advice] Gemini call failed:', geminiErr.message);
-      throw geminiErr;
+      console.warn('[AI /waste-advice] Gemini unavailable, using static fallback:', geminiErr.message);
     }
+
+    if (!raw) {
+      // Gemini недоступен — возвращаем статичный ответ (не 502!)
+      return res.json({
+        material: key,
+        instructions: staticData ? `Сдайте в: ${staticData.where}` : 'Сдайте в ближайший пункт приёма вторсырья.',
+        steps: staticData?.preparation || ['Уточните тип материала', 'Найдите ближайший пункт приёма'],
+        eco_tip: staticData?.eco_fact || 'Каждый сданный килограмм снижает нагрузку на полигоны.',
+        urgency: (key === 'battery' || key === 'electronics') ? 'special' : 'soon',
+        where: staticData?.where || null,
+        icon: staticData?.icon || '♻️',
+        fallback: true,
+      });
+    }
+
     const clean = raw.replace(/```json|```/g, '').trim();
 
     let parsed;
     try {
       parsed = JSON.parse(clean);
     } catch (parseErr) {
-      console.warn('[AI /waste-advice] JSON parse failed, raw:', raw.substring(0, 200));
-      // Если Gemini вернул не JSON — отдаём как текст
+      console.warn('[AI /waste-advice] JSON parse failed, using static fallback');
       return res.json({
-        instructions: raw.trim(),
-        steps: [],
+        material: key,
+        instructions: staticData ? `Сдайте в: ${staticData.where}` : raw.trim(),
+        steps: staticData?.preparation || [],
         eco_tip: staticData?.eco_fact || '',
         urgency: 'soon',
+        where: staticData?.where || null,
+        icon: staticData?.icon || '♻️',
         fallback: true,
       });
     }
@@ -322,7 +339,6 @@ urgency: "now" = можно выбросить в обычный бак, "soon" 
     res.json({
       material: key,
       ...parsed,
-      // Дополняем статичными данными
       where: staticData?.where || null,
       icon: staticData?.icon || '♻️',
     });
