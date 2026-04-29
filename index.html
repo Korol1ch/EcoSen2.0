@@ -1420,21 +1420,11 @@ main {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
-        imageReady = false; // сбросить до загрузки
-        // ВАЖНО: onload назначается ДО src, чтобы не пропустить событие
-        imageEl.onload = () => {
-          imageReady = true;
-          reportCard.classList.remove('visible');
-          loadingCard.classList.remove('visible');
-        };
-        imageEl.onerror = () => {
-          imageReady = false;
-          alert('Ошибка загрузки изображения. Попробуйте другой файл.');
-        };
         imageEl.src = ev.target.result;
         imageEl.style.display = 'block';
         placeholder.style.display = 'none';
         uploadZone.classList.add('has-image');
+        imageReady = true;
         reportCard.classList.remove('visible');
         loadingCard.classList.remove('visible');
       };
@@ -1442,22 +1432,15 @@ main {
     });
  
     document.getElementById('btn-analyze').addEventListener('click', async () => {
-      // Ждём до 3с если изображение ещё грузится
-      if (!imageReady && imageEl.src) {
-        await new Promise((resolve) => {
-          const check = setInterval(() => {
-            if (imageReady) { clearInterval(check); resolve(); }
-          }, 100);
-          setTimeout(() => { clearInterval(check); resolve(); }, 3000);
-        });
-      }
       if (!imageReady) { alert(t('no_image')); return; }
       if (!model) {
         setModelStatus('⏳ Загрузка модели...', '#888');
+        loadingCard.classList.add('visible');
         await loadModel();
       }
       if (!model) {
         setModelStatus('❌ Модель недоступна. Проверьте интернет и нажмите ещё раз.', '#e53935');
+        loadingCard.classList.remove('visible');
         return;
       }
       loadingCard.classList.add('visible');
@@ -1470,14 +1453,6 @@ main {
  
     async function predict() {
       if (!model) { loadingCard.classList.remove('visible'); return; }
-      // Wait for image to be fully loaded before predicting
-      if (!imageEl.complete || imageEl.naturalWidth === 0) {
-        await new Promise((resolve, reject) => {
-          imageEl.onload = resolve;
-          imageEl.onerror = reject;
-          setTimeout(reject, 5000); // timeout 5s
-        }).catch(() => {});
-      }
       let predictions;
       try {
         predictions = await model.predict(imageEl);
