@@ -99,18 +99,22 @@ router.post('/scan', async (req, res) => {
       [points, co2Saved, req.user.id]
     );
 
-    await rewardHonestTransaction(req.user.id);
-
-    // Check achievements
-    const newAchievements = await checkAndGrantAchievements(req.user.id);
-    for (const ach of newAchievements) {
-      await notify(req.user.id, {
-        type: 'achievement',
-        title: `${ach.icon} Достижение: ${ach.name}`,
-        body: ach.description,
-        sendEmail: true,
-        emailSubject: `EcoSen: Новое достижение — ${ach.name}`,
-      });
+    // Non-critical operations — не падаем если они ошибятся
+    let newAchievements = [];
+    try {
+      await rewardHonestTransaction(req.user.id);
+      newAchievements = await checkAndGrantAchievements(req.user.id);
+      for (const ach of newAchievements) {
+        await notify(req.user.id, {
+          type: 'achievement',
+          title: `${ach.icon} Достижение: ${ach.name}`,
+          body: ach.description,
+          sendEmail: true,
+          emailSubject: `EcoSen: Новое достижение — ${ach.name}`,
+        });
+      }
+    } catch (bonusErr) {
+      console.warn('[POST /scan] Non-critical bonus/achievement error:', bonusErr.message);
     }
 
     res.json({
@@ -121,8 +125,8 @@ router.post('/scan', async (req, res) => {
       new_achievements: newAchievements,
     });
   } catch (err) {
-    console.error('Scan error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('[POST /scan] Error:', err.message, err.stack);
+    res.status(500).json({ error: 'Server error', detail: err.message });
   }
 });
 

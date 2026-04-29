@@ -295,13 +295,20 @@ ${staticContext}
 
 urgency: "now" = можно выбросить в обычный бак, "soon" = нужен специальный пункт, "special" = опасный материал требует особого обращения.`;
 
-    const raw = await askGemini(prompt);
+    let raw;
+    try {
+      raw = await askGemini(prompt);
+    } catch (geminiErr) {
+      console.error('[AI /waste-advice] Gemini call failed:', geminiErr.message);
+      throw geminiErr;
+    }
     const clean = raw.replace(/```json|```/g, '').trim();
 
     let parsed;
     try {
       parsed = JSON.parse(clean);
-    } catch {
+    } catch (parseErr) {
+      console.warn('[AI /waste-advice] JSON parse failed, raw:', raw.substring(0, 200));
       // Если Gemini вернул не JSON — отдаём как текст
       return res.json({
         instructions: raw.trim(),
