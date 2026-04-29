@@ -357,7 +357,7 @@ urgency: "now" = можно выбросить в обычный бак, "soon" 
 // Требует авторизации.
 const { askGemini, askGeminiChat } = require('../services/gemini');
 
-router.post('/chat', authMiddleware, async (req, res) => {
+router.post('/chat', async (req, res) => {  // auth optional — guests can use chat too
   try {
     const { message, context, history = [] } = req.body;
     if (!message || typeof message !== 'string' || !message.trim()) {

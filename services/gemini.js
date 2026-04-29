@@ -1,11 +1,11 @@
 const https = require('https');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// Актуальные модели по приоритету (2025)
+// Актуальные модели по приоритету (v1 API, 2025)
 const GEMINI_MODELS = [
-  'gemini-1.5-flash-8b',   // самая быстрая и дешёвая
-  'gemini-1.5-flash',      // баланс скорость/качество
-  'gemini-1.5-pro',        // более мощная, но медленнее
+  'gemini-2.0-flash-lite',  // быстрая и дешёвая
+  'gemini-2.0-flash',       // баланс скорость/качество
+  'gemini-1.5-flash',       // fallback
 ];
 
 // Задержка между попытками (мс)
@@ -51,7 +51,7 @@ async function askGemini(userMessage, systemContext = '') {
   // Пробуем каждую модель по очереди пока одна не ответит успешно
   async function tryModel(model) {
     return new Promise((resolve, reject) => {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
       const urlObj = new URL(url);
       const options = {
         hostname: urlObj.hostname,
@@ -139,7 +139,7 @@ async function askGeminiChat(userMessage, systemContext = '', history = []) {
 
   async function tryModel(model) {
     return new Promise((resolve, reject) => {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
       const urlObj = new URL(url);
       const options = {
         hostname: urlObj.hostname,
