@@ -1488,6 +1488,9 @@ main {
       let detectedIcon = 'ℹ️';
       let detectedTitle = t('not_detected');
  
+      // Сохраняем сырое имя класса модели для последующего маппинга к API
+      reportCard.dataset.rawClass = best.className;
+
       if (info) {
         detectedIcon = info.icon;
         detectedTitle = info.title;
@@ -1674,8 +1677,9 @@ main {
       if (authToken) {
         const reportCard = document.getElementById('report-card');
         if (reportCard && reportCard.classList.contains('visible')) {
-          const materialTitle = document.getElementById('report-title').textContent;
-          const materialKey = getMaterialKeyFromTitle(materialTitle);
+          // Используем сырое имя класса модели (надёжнее, чем локализованный title)
+          const rawClass = reportCard.dataset.rawClass;
+          const materialKey = rawClass ? getMaterialKeyFromClassName(rawClass) : null;
           if (materialKey) {
             fetchAIAdvice(materialKey);
           }
@@ -1683,21 +1687,40 @@ main {
       }
     };
 
-    // Map display title to API material key
-    function getMaterialKeyFromTitle(title) {
+    // Map raw model class name → API material key
+    // Модель возвращает классы на русском: "Пластик", "Стекло", "Метал", "Картон"
+    function getMaterialKeyFromClassName(className) {
       const map = {
-        'Plastic': 'plastic', 'Пластик': 'plastic',
-        'Glass': 'glass', 'Стекло': 'glass',
-        'Paper': 'paper', 'Бумага': 'paper',
-        'Cardboard': 'cardboard', 'Картон': 'cardboard',
-        'Metal': 'metal', 'Металл': 'metal',
-        'Organic': 'organic', 'Органика': 'organic',
-        'Battery': 'battery', 'Батарейки': 'battery',
-        'Electronics': 'electronics', 'Электроника': 'electronics',
-        'Textile': 'textile', 'Текстиль': 'textile',
+        'Пластик':     'plastic',
+        'Стекло':      'glass',
+        'Метал':       'metal',
+        'Металл':      'metal',
+        'Картон':      'cardboard',
+        'Бумага':      'paper',
+        'Органика':    'organic',
+        'Батарейки':   'battery',
+        'Батарея':     'battery',
+        'Электроника': 'electronics',
+        'Текстиль':    'textile',
+        'Алюминий':    'aluminum',
+        // Английские названия на случай другой модели
+        'Plastic':     'plastic',
+        'Glass':       'glass',
+        'Metal':       'metal',
+        'Cardboard':   'cardboard',
+        'Paper':       'paper',
+        'Organic':     'organic',
+        'Battery':     'battery',
+        'Electronics': 'electronics',
+        'Textile':     'textile',
+        'Aluminum':    'aluminum',
       };
+      // Точное совпадение
+      if (map[className]) return map[className];
+      // Частичное совпадение (регистронезависимо)
+      const lower = className.toLowerCase();
       for (const [k, v] of Object.entries(map)) {
-        if (title.toLowerCase().includes(k.toLowerCase())) return v;
+        if (lower.includes(k.toLowerCase()) || k.toLowerCase().includes(lower)) return v;
       }
       return null;
     }
@@ -2019,106 +2042,5 @@ main {
 
     // ── Start ────────────────────────────────────────────────────────────────
     tryAutoLogin();
-  </script>
-  <!-- ── ECOBOT AI CHAT ── -->
-  <button id="ecobot-fab" onclick="toggleEcobotChat()" title="EcoBot AI" style="
-    position:fixed;bottom:90px;right:18px;z-index:300;
-    width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
-    background:linear-gradient(135deg,#4CAF50,#2e7d32);
-    color:#fff;font-size:22px;box-shadow:0 4px 16px rgba(76,175,80,0.45);
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .2s;
-  ">🤖</button>
-
-  <div id="ecobot-chat" style="
-    display:none;position:fixed;bottom:155px;right:14px;z-index:400;
-    width:min(340px,calc(100vw - 28px));
-    background:#fff;border-radius:18px;
-    box-shadow:0 8px 40px rgba(0,0,0,0.18);
-    overflow:hidden;flex-direction:column;
-    font-family:'DM Sans',sans-serif;
-  ">
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#4CAF50,#2e7d32);padding:14px 16px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:22px;">🤖</span>
-      <div>
-        <div style="color:#fff;font-weight:600;font-size:15px;">EcoBot</div>
-        <div style="color:rgba(255,255,255,0.8);font-size:12px;">AI-ассистент по переработке</div>
-      </div>
-      <button onclick="toggleEcobotChat()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;">×</button>
-    </div>
-
-    <!-- Messages -->
-    <div id="ecobot-messages" style="
-      height:260px;overflow-y:auto;padding:14px;
-      display:flex;flex-direction:column;gap:10px;
-      background:#fafaf8;
-    ">
-      <div class="ecobot-msg bot" style="
-        background:#e8f5e9;border-radius:12px 12px 12px 2px;
-        padding:10px 13px;font-size:13.5px;line-height:1.5;
-        max-width:85%;align-self:flex-start;color:#1a1a18;
-      ">
-        Привет! 👋 Я EcoBot — помогу разобраться с сортировкой мусора, расскажу, куда сдать отходы и как жить экологичнее. Спрашивайте!
-      </div>
-    </div>
-
-    <!-- Input -->
-    <div style="padding:10px 12px;border-top:1px solid #eee;display:flex;gap:8px;background:#fff;">
-      <input id="ecobot-input" type="text" placeholder="Задайте вопрос EcoBot..." style="
-        flex:1;border:1px solid #ddd;border-radius:20px;
-        padding:9px 14px;font-size:13.5px;font-family:inherit;outline:none;
-        background:#fafaf8;
-      " onkeydown="if(event.key==='Enter')sendEcobotMessage()">
-      <button onclick="sendEcobotMessage()" style="
-        background:#4CAF50;color:#fff;border:none;border-radius:50%;
-        width:38px;height:38px;font-size:18px;cursor:pointer;flex-shrink:0;
-        display:flex;align-items:center;justify-content:center;
-      ">➤</button>
-    </div>
-  </div>
-
-  <script>
-    function toggleEcobotChat() {
-      const chat = document.getElementById('ecobot-chat');
-      const isOpen = chat.style.display === 'flex';
-      chat.style.display = isOpen ? 'none' : 'flex';
-      if (!isOpen) document.getElementById('ecobot-input').focus();
-    }
-
-    function addEcobotMessage(text, isBot) {
-      const msgs = document.getElementById('ecobot-messages');
-      const div = document.createElement('div');
-      div.style.cssText = isBot
-        ? 'background:#e8f5e9;border-radius:12px 12px 12px 2px;padding:10px 13px;font-size:13.5px;line-height:1.5;max-width:85%;align-self:flex-start;color:#1a1a18;white-space:pre-wrap;'
-        : 'background:#4CAF50;color:#fff;border-radius:12px 12px 2px 12px;padding:10px 13px;font-size:13.5px;line-height:1.5;max-width:85%;align-self:flex-end;';
-      div.textContent = text;
-      msgs.appendChild(div);
-      msgs.scrollTop = msgs.scrollHeight;
-      return div;
-    }
-
-    async function sendEcobotMessage() {
-      const input = document.getElementById('ecobot-input');
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-
-      addEcobotMessage(text, false);
-
-      // Check auth
-      if (typeof authToken === 'undefined' || !authToken) {
-        addEcobotMessage('🔒 Войдите в аккаунт, чтобы использовать AI-ассистента.', true);
-        return;
-      }
-
-      const typing = addEcobotMessage('⏳ EcoBot думает...', true);
-      try {
-        const data = await apiCall('POST', '/api/ai/chat', { message: text });
-        typing.textContent = data.reply || 'Нет ответа';
-      } catch(e) {
-        typing.textContent = '❌ Ошибка AI-ассистента. Попробуйте позже.';
-      }
-    }
   </script>
 
