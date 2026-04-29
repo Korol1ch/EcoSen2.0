@@ -1,96 +1,69 @@
 const https = require('https');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// Актуальные модели по приоритету (v1 API, 2025)
+
+// Модели по приоритету (v1 API)
 const GEMINI_MODELS = [
-  'gemini-2.0-flash-lite',  // быстрая и дешёвая
-  'gemini-2.0-flash',       // баланс скорость/качество
-  'gemini-1.5-flash',       // fallback
+  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
 ];
 
-// Задержка между попытками (мс)
-const RETRY_DELAY_MS = 1000;
+const RETRY_DELAY_MS = 800;
+
+const DEFAULT_SYSTEM = `Ты — EcoBot, AI-ассистент экологического приложения EcoSen (Казахстан).
+Помогаешь пользователям правильно сортировать и сдавать мусор, находить пункты приёма вторсырья.
+Отвечай дружелюбно, коротко и по делу. Используй эмодзи уместно.
+Отвечай на языке вопроса (русский / казахский / английский).`;
+
+const CHAT_SYSTEM = `Ты — EcoBot, живой AI-помощник приложения EcoSen (Казахстан).
+Помогаешь разобраться с сортировкой и переработкой мусора.
+Отвечай коротко, живо, как друг — не как справочник. Используй эмодзи.
+Если вопрос не про экологию — мягко верни к теме.
+Отвечай на языке вопроса (русский / казахский / английский).`;
 
 /**
- * Send a message to Gemini and get a text reply.
- * @param {string} userMessage
- * @param {string} [systemContext]  - optional system-level context
- * @returns {Promise<string>}
+ * Вспомогательная функция: отправить запрос к одной модели.
+ * system передаётся как первое сообщение user + model (workaround для v1 без system_instruction).
  */
-async function askGemini(userMessage, systemContext = '') {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY не задан в переменных окружения');
-  }
-
-  const systemInstruction = systemContext || `Ты — EcoBot, AI-ассистент экологического приложения EcoSen.
-Ты помогаешь пользователям:
-- Понять, как правильно сортировать и сдавать мусор
-- Узнать, где находятся пункты приёма вторсырья
-- Получить советы по экологичному образу жизни
-- Разобраться в вопросах переработки отходов в Казахстане
-
-Отвечай дружелюбно, коротко и по делу. Используй эмодзи уместно.
-Всегда отвечай на том же языке, на котором задан вопрос (русский/казахский/английский).`;
-
-  const body = JSON.stringify({
-    system_instruction: {
-      parts: [{ text: systemInstruction }],
-    },
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: userMessage }],
+function callGemini(model, contents, generationConfig) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = JSON.stringify({ contents, generationConfig });
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    const urlObj = new URL(url);
+    const req = https.request({
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(bodyStr),
       },
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 1024,
-    },
-  });
-
-  // Пробуем каждую модель по очереди пока одна не ответит успешно
-  async function tryModel(model) {
-    return new Promise((resolve, reject) => {
-      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-      const urlObj = new URL(url);
-      const options = {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname + urlObj.search,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(body),
-        },
-      };
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(data);
-            if (json.error) {
-              console.warn(`[Gemini] Model ${model} error: ${json.error.message}`);
-              return reject(new Error(json.error.message || 'Gemini API error'));
-            }
-            const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) return reject(new Error('Пустой ответ от Gemini'));
-            resolve(text.trim());
-          } catch (e) {
-            reject(new Error('Не удалось разобрать ответ Gemini'));
-          }
-        });
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.error) return reject(new Error(json.error.message || 'Gemini API error'));
+          const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) return reject(new Error('Пустой ответ от Gemini'));
+          resolve(text.trim());
+        } catch (e) { reject(new Error('Не удалось разобрать ответ Gemini')); }
       });
-      req.on('error', reject);
-      req.write(body);
-      req.end();
     });
-  }
+    req.on('error', reject);
+    req.write(bodyStr);
+    req.end();
+  });
+}
 
+/** Попробовать все модели по очереди */
+async function tryModels(contents, generationConfig) {
   let lastError;
   for (const model of GEMINI_MODELS) {
     try {
-      const result = await tryModel(model);
-      return result;
+      return await callGemini(model, contents, generationConfig);
     } catch (err) {
       lastError = err;
       console.warn(`[Gemini] Fallback: ${model} failed → trying next`);
@@ -101,25 +74,35 @@ async function askGemini(userMessage, systemContext = '') {
 }
 
 /**
- * Multi-turn chat with conversation history.
- * @param {string} userMessage - latest user message
- * @param {string} systemContext - system prompt
- * @param {Array<{role: string, content: string}>} history - previous messages
+ * Одиночный запрос (без истории).
+ * Системный контекст встраивается через fake-диалог (workaround v1).
+ */
+async function askGemini(userMessage, systemContext = '') {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY не задан');
+  const system = systemContext || DEFAULT_SYSTEM;
+
+  // v1 не поддерживает system_instruction — эмулируем через первый обмен
+  const contents = [
+    { role: 'user',  parts: [{ text: system }] },
+    { role: 'model', parts: [{ text: 'Понял, буду следовать этим инструкциям.' }] },
+    { role: 'user',  parts: [{ text: userMessage }] },
+  ];
+
+  return tryModels(contents, { temperature: 0.7, maxOutputTokens: 1024 });
+}
+
+/**
+ * Многоходовой чат с историей.
  */
 async function askGeminiChat(userMessage, systemContext = '', history = []) {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY не задан в переменных окружения');
-  }
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY не задан');
+  const system = systemContext || CHAT_SYSTEM;
 
-  const systemInstruction = systemContext || `Ты — EcoBot, AI-ассистент экологического приложения EcoSen для Казахстана.
-Ты помогаешь пользователям разобраться с сортировкой и сдачей мусора.
-Отвечай дружелюбно, живо, коротко — как настоящий помощник в чате.
-Используй эмодзи уместно. Не пиши длинные списки без необходимости.
-Если вопрос не про экологию — мягко верни разговор к теме.
-Отвечай на языке вопроса (русский/казахский/английский).`;
+  const contents = [
+    { role: 'user',  parts: [{ text: system }] },
+    { role: 'model', parts: [{ text: 'Отлично, я готов помогать! 🌿' }] },
+  ];
 
-  // Формируем историю в формате Gemini
-  const contents = [];
   for (const msg of history) {
     if (msg.role === 'user' || msg.role === 'assistant') {
       contents.push({
@@ -128,55 +111,10 @@ async function askGeminiChat(userMessage, systemContext = '', history = []) {
       });
     }
   }
-  // Добавляем новое сообщение пользователя
+
   contents.push({ role: 'user', parts: [{ text: userMessage }] });
 
-  const body = JSON.stringify({
-    system_instruction: { parts: [{ text: systemInstruction }] },
-    contents,
-    generationConfig: { temperature: 0.85, maxOutputTokens: 512 },
-  });
-
-  async function tryModel(model) {
-    return new Promise((resolve, reject) => {
-      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-      const urlObj = new URL(url);
-      const options = {
-        hostname: urlObj.hostname,
-        path: urlObj.pathname + urlObj.search,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      };
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(data);
-            if (json.error) return reject(new Error(json.error.message || 'Gemini API error'));
-            const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) return reject(new Error('Пустой ответ от Gemini'));
-            resolve(text.trim());
-          } catch (e) { reject(new Error('Не удалось разобрать ответ Gemini')); }
-        });
-      });
-      req.on('error', reject);
-      req.write(body);
-      req.end();
-    });
-  }
-
-  let lastError;
-  for (const model of GEMINI_MODELS) {
-    try {
-      return await tryModel(model);
-    } catch (err) {
-      lastError = err;
-      console.warn(`[Gemini] Chat fallback: ${model} failed → trying next`);
-      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-    }
-  }
-  throw lastError || new Error('Все модели Gemini недоступны');
+  return tryModels(contents, { temperature: 0.85, maxOutputTokens: 512 });
 }
 
 module.exports = { askGemini, askGeminiChat };
