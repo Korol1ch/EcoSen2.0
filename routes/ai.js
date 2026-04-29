@@ -353,13 +353,13 @@ urgency: "now" = можно выбросить в обычный бак, "soon" 
 });
 
 // ── POST /api/ai/chat ─────────────────────────────────────────────────────────
-// Чат с EcoBot (Gemini). Body: { message: string, context?: string }
+// Чат с EcoBot (Gemini). Body: { message: string, context?: string, history?: [{role, content}] }
 // Требует авторизации.
-const { askGemini } = require('../services/gemini');
+const { askGemini, askGeminiChat } = require('../services/gemini');
 
 router.post('/chat', authMiddleware, async (req, res) => {
   try {
-    const { message, context } = req.body;
+    const { message, context, history = [] } = req.body;
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ error: 'Поле message обязательно' });
     }
@@ -367,7 +367,7 @@ router.post('/chat', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Сообщение слишком длинное (макс. 1000 символов)' });
     }
 
-    const reply = await askGemini(message.trim(), context || '');
+    const reply = await askGeminiChat(message.trim(), context || '', history);
     res.json({ reply });
   } catch (err) {
     console.error('[AI /chat] Gemini error:', err.message);

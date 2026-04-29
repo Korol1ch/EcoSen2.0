@@ -554,6 +554,10 @@ main {
       animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes ecoDot {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40%            { transform: scale(1.1); opacity: 1; }
+      }
  
     /* ── PROFILE PAGE ── */
     .profile-header {
@@ -1770,9 +1774,156 @@ main {
 
         adviceBlock.innerHTML = html;
 
+        // Добавляем мини-чат с EcoBot
+        buildEcoChat(adviceBlock, materialKey);
+
       } catch(e) {
         adviceBlock.innerHTML = `<span style="color:var(--text-secondary);font-size:13px;">💬 AI-советы недоступны. Проверьте соединение.</span>`;
       }
+    }
+
+    // ── EcoBot mini-chat ───────────────────────────────────────────────────────
+    function buildEcoChat(container, materialKey) {
+      const chatHistory = []; // { role: 'assistant'|'user', text: string }
+
+      const chatWrap = document.createElement('div');
+      chatWrap.style.cssText = [
+        'margin-top:14px',
+        'border-top:1px solid var(--accent-mid)',
+        'padding-top:12px',
+      ].join(';');
+
+      chatWrap.innerHTML = `
+        <div id="ecobot-chat-messages" style="
+          display:flex;flex-direction:column;gap:8px;
+          max-height:240px;overflow-y:auto;
+          margin-bottom:10px;
+          padding-right:2px;
+        "></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="ecobot-chat-input" rows="1" placeholder="Задайте вопрос EcoBot..." style="
+            flex:1;padding:10px 12px;
+            border:1px solid var(--accent-mid);
+            border-radius:10px;
+            font-size:13.5px;
+            font-family:'DM Sans',sans-serif;
+            resize:none;outline:none;
+            background:#fff;
+            color:#1a1a18;
+            line-height:1.4;
+            max-height:80px;
+            overflow-y:auto;
+          "></textarea>
+          <button id="ecobot-chat-send" style="
+            width:36px;height:36px;flex-shrink:0;
+            background:var(--accent);color:#fff;
+            border:none;border-radius:50%;cursor:pointer;
+            font-size:16px;display:flex;align-items:center;justify-content:center;
+            transition:opacity 0.2s;
+          ">➤</button>
+        </div>
+      `;
+      container.appendChild(chatWrap);
+
+      const messagesEl = chatWrap.querySelector('#ecobot-chat-messages');
+      const inputEl    = chatWrap.querySelector('#ecobot-chat-input');
+      const sendBtn    = chatWrap.querySelector('#ecobot-chat-send');
+
+      function addMessage(role, text, isLoading = false) {
+        const isUser = role === 'user';
+        const msgEl = document.createElement('div');
+        msgEl.style.cssText = [
+          'display:flex',
+          isUser ? 'justify-content:flex-end' : 'justify-content:flex-start',
+        ].join(';');
+
+        const bubble = document.createElement('div');
+        bubble.style.cssText = [
+          'max-width:88%',
+          'padding:8px 12px',
+          'border-radius:' + (isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px'),
+          'font-size:13.5px',
+          'line-height:1.55',
+          'white-space:pre-wrap',
+          isUser
+            ? 'background:var(--accent);color:#fff;'
+            : 'background:rgba(255,255,255,0.85);color:#1a1a18;border:1px solid var(--accent-mid);',
+        ].join(';');
+
+        if (isLoading) {
+          bubble.innerHTML = `<span style="display:inline-flex;gap:4px;align-items:center;">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ecoDot 1s ease-in-out infinite;animation-delay:0s;"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.2s;"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.4s;"></span>
+          </span>`;
+        } else {
+          bubble.textContent = text;
+        }
+
+        msgEl.appendChild(bubble);
+        messagesEl.appendChild(msgEl);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return bubble;
+      }
+
+      // Приветственное сообщение
+      setTimeout(() => {
+        addMessage('assistant', `Привет! 👋 Я EcoBot. Если есть вопросы про этот материал или сортировку мусора — спрашивай!`);
+        chatHistory.push({ role: 'assistant', content: `Привет! Я EcoBot. Если есть вопросы про этот материал (${materialKey}) или сортировку мусора — спрашивай!` });
+      }, 400);
+
+      async function sendMessage() {
+        const text = inputEl.value.trim();
+        if (!text) return;
+
+        inputEl.value = '';
+        inputEl.style.height = 'auto';
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+
+        addMessage('user', text);
+        chatHistory.push({ role: 'user', content: text });
+
+        const loadingBubble = addMessage('assistant', '', true);
+
+        try {
+          const res = await fetch(API_BASE + '/api/ai/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify({
+              message: text,
+              context: `Пользователь смотрит советы по переработке материала: ${materialKey}. Отвечай кратко, по делу, используй эмодзи. Говори как живой помощник, не перечисляй длинные списки без нужды.`,
+              history: chatHistory.slice(-8), // последние 8 сообщений для контекста
+            }),
+          });
+          const data = await res.json();
+          const reply = data.reply || data.error || 'Не могу ответить прямо сейчас 😔';
+          loadingBubble.innerHTML = '';
+          loadingBubble.textContent = reply;
+          chatHistory.push({ role: 'assistant', content: reply });
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        } catch(e) {
+          loadingBubble.textContent = 'Ошибка соединения. Попробуй ещё раз.';
+        }
+
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '1';
+      }
+
+      sendBtn.addEventListener('click', sendMessage);
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+      inputEl.addEventListener('input', () => {
+        inputEl.style.height = 'auto';
+        inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + 'px';
+      });
     }
 
     // ══════════════════════════════════════════════════════════════════════
