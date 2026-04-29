@@ -1170,6 +1170,19 @@ main {
       if (newLevel.idx > prevLevel.idx) {
         setTimeout(() => showLevelUp(newLevel), 900);
       }
+
+      // Синхронизация с сервером (если залогинен)
+      if (typeof authToken !== 'undefined' && authToken) {
+        apiCall('POST', '/api/user/scan', { material, points: pts, icon })
+          .then(res => {
+            if (res?.user) {
+              state.points = res.user.points;
+              state.scans = res.user.scans;
+              updateBanner();
+            }
+          })
+          .catch(() => {});
+      }
     }
  
     function showToast(msg) {
@@ -1593,23 +1606,7 @@ main {
       }
     }
 
-    // ── Override awardPoints to also POST to server ─────────────────────────
-    const _originalAwardPoints = awardPoints;
-    async function awardPointsWithSync(pts, material, icon) {
-      _originalAwardPoints(pts, material, icon);  // update local state immediately
-      if (!authToken || !currentUser) return;
-      try {
-        const res = await apiCall('POST', '/api/user/scan', { material, points: pts, icon });
-        if (res.user) {
-          state.points = res.user.points;
-          state.scans = res.user.scans;
-          updateBanner();
-          updateProfile();
-        }
-      } catch (e) {
-        console.warn('Could not sync scan to server:', e.message);
-      }
-    }
+
 
     // ── Override leaderboard to load from server ────────────────────────────
     async function renderLeaderboardFromServer() {
@@ -2023,22 +2020,7 @@ main {
       });
     }
 
-    // ── Patch awardPoints to sync to server ──────────────────────────────────
-    const _awardPointsOrig = awardPoints;
-    function awardPoints(pts, material, icon) {
-      _awardPointsOrig(pts, material, icon);
-      if (authToken) {
-        apiCall('POST', '/api/user/scan', { material, points: pts, icon })
-          .then(res => {
-            if (res?.user) {
-              state.points = res.user.points;
-              state.scans = res.user.scans;
-              updateBanner();
-            }
-          })
-          .catch(() => {});
-      }
-    }
+
 
     // ── Start ────────────────────────────────────────────────────────────────
     tryAutoLogin();
