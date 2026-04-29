@@ -224,10 +224,19 @@ const INIT_SQL = `
   ON CONFLICT (code) DO NOTHING;
 `;
 
+// Migration: add columns that may be missing in existing databases
+const MIGRATE_SQL = `
+  ALTER TABLE transactions ADD COLUMN IF NOT EXISTS co2_saved FLOAT DEFAULT 0;
+  ALTER TABLE transactions ADD COLUMN IF NOT EXISTS icon VARCHAR(10);
+  ALTER TABLE users      ADD COLUMN IF NOT EXISTS co2_saved_kg FLOAT DEFAULT 0;
+`;
+
 async function initDB() {
   try {
     await pool.query(INIT_SQL);
     console.log('✅ Database initialized successfully');
+    await pool.query(MIGRATE_SQL);
+    console.log('✅ Migrations applied successfully');
   } catch (err) {
     console.error('❌ Database init error:', err.message);
   }

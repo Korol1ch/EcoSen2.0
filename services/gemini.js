@@ -1,13 +1,15 @@
 const https = require('https');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// Список моделей по приоритету — если одна недоступна, пробуем следующую
+// Актуальные модели по приоритету (2025)
 const GEMINI_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
-  'gemini-pro',
+  'gemini-1.5-flash-8b',   // самая быстрая и дешёвая
+  'gemini-1.5-flash',      // баланс скорость/качество
+  'gemini-1.5-pro',        // более мощная, но медленнее
 ];
+
+// Задержка между попытками (мс)
+const RETRY_DELAY_MS = 1000;
 
 /**
  * Send a message to Gemini and get a text reply.
@@ -92,6 +94,7 @@ async function askGemini(userMessage, systemContext = '') {
     } catch (err) {
       lastError = err;
       console.warn(`[Gemini] Fallback: ${model} failed → trying next`);
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
     }
   }
   throw lastError || new Error('Все модели Gemini недоступны');
