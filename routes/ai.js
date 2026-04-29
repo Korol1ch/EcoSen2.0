@@ -241,6 +241,94 @@ router.get('/materials', (req, res) => {
 
 module.exports = router;
 
+
+// ── POST /api/ai/waste-advice ─────────────────────────────────────────────────
+// ML модуль определил тип мусора → Gemini даёт персональные инструкции
+// Body: { material: string, confidence: number, lang?: 'ru'|'kk'|'en' }
+// Returns: { instructions: string, steps: string[], eco_tip: string, urgency: string }
+router.post('/waste-advice', authMiddleware, async (req, res) => {
+  try {
+    const { material, confidence, lang = 'ru' } = req.body;
+    if (!material) return res.status(400).json({ error: 'material обязателен' });
+
+    const key = material.toLowerCase().trim();
+    const staticData = WASTE_ADVICE[key] || null;
+
+    // Формируем контекст из статичных данных для более точного ответа
+    const staticContext = staticData ? `
+Известная информация о материале:
+- Куда сдавать: ${staticData.where}
+- Нельзя сдавать: ${staticData.not_recyclable?.join(', ') || 'нет ограничений'}
+- CO2 эффект: ${staticData.co2_rate}
+- Подготовка (базовая): ${staticData.preparation?.join('; ')}
+` : '';
+
+    const langInstruction = lang === 'kk'
+      ? 'Отвечай на казахском языке.'
+      : lang === 'en'
+      ? 'Answer in English.'
+      : 'Отвечай на русском языке.';
+
+    const confidenceNote = confidence >= 0.8
+      ? 'Модель определила тип с высокой уверенностью.'
+      : confidence >= 0.5
+      ? 'Модель определила тип со средней уверенностью.'
+      : 'Модель определила тип с низкой уверенностью, возможна ошибка.';
+
+    const prompt = `Ты — EcoBot, помощник по переработке мусора в Казахстане.
+${langInstruction}
+
+Пользователь сфотографировал мусор. ML-модель определила тип: "${material}" (${(confidence * 100).toFixed(0)}% уверенность).
+${confidenceNote}
+${staticContext}
+
+Дай КОНКРЕТНЫЕ пошаговые инструкции что делать с этим мусором прямо сейчас.
+Будь практичным и кратким. Учитывай реалии Казахстана.
+
+Ответь СТРОГО в JSON (без markdown, без комментариев):
+{
+  "instructions": "Одно предложение — главное действие",
+  "steps": ["шаг 1", "шаг 2", "шаг 3"],
+  "eco_tip": "Один интересный экофакт об этом материале",
+  "urgency": "now" | "soon" | "special"
+}
+
+urgency: "now" = можно выбросить в обычный бак, "soon" = нужен специальный пункт, "special" = опасный материал требует особого обращения.`;
+
+    const raw = await askGemini(prompt);
+    const clean = raw.replace(/```json|```/g, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch {
+      // Если Gemini вернул не JSON — отдаём как текст
+      return res.json({
+        instructions: raw.trim(),
+        steps: [],
+        eco_tip: staticData?.eco_fact || '',
+        urgency: 'soon',
+        fallback: true,
+      });
+    }
+
+    res.json({
+      material: key,
+      ...parsed,
+      // Дополняем статичными данными
+      where: staticData?.where || null,
+      icon: staticData?.icon || '♻️',
+    });
+
+  } catch (err) {
+    console.error('[AI /waste-advice] error:', err.message);
+    if (err.message.includes('GEMINI_API_KEY')) {
+      return res.status(503).json({ error: 'AI-ассистент не настроен' });
+    }
+    res.status(502).json({ error: 'Ошибка AI. Попробуйте позже.' });
+  }
+});
+
 // ── POST /api/ai/chat ─────────────────────────────────────────────────────────
 // Чат с EcoBot (Gemini). Body: { message: string, context?: string }
 // Требует авторизации.

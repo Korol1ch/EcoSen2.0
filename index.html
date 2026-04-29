@@ -1476,8 +1476,9 @@ main {
       let detectedIcon = 'ℹ️';
       let detectedTitle = t('not_detected');
  
-      // Сохраняем сырое имя класса модели для последующего маппинга к API
+      // Сохраняем сырое имя класса и уверенность для Gemini
       reportCard.dataset.rawClass = best.className;
+      reportCard.dataset.confidence = pct.toFixed(4);
 
       if (info) {
         detectedIcon = info.icon;
@@ -1641,19 +1642,20 @@ main {
       });
     });
 
-    // Patch predict to use server sync + call AI advice after detection
+    // Patch predict: after ML detection → call Gemini AI advice
     const origPredict = predict;
     predict = async function() {
       await origPredict();
-      // After detection, fetch AI advice from backend if user is logged in
+      // After detection, fetch Gemini AI advice (работает и без авторизации для демо,
+      // но полный функционал только для залогиненных)
       if (authToken) {
         const reportCard = document.getElementById('report-card');
         if (reportCard && reportCard.classList.contains('visible')) {
-          // Используем сырое имя класса модели (надёжнее, чем локализованный title)
           const rawClass = reportCard.dataset.rawClass;
+          const confidence = parseFloat(reportCard.dataset.confidence || '0');
           const materialKey = rawClass ? getMaterialKeyFromClassName(rawClass) : null;
           if (materialKey) {
-            fetchAIAdvice(materialKey);
+            fetchAIAdvice(materialKey, confidence);
           }
         }
       }
@@ -1697,29 +1699,79 @@ main {
       return null;
     }
 
-    // Fetch advice from backend and inject into report card
-    async function fetchAIAdvice(materialKey) {
+    // Fetch Gemini AI advice after ML model detects material
+    async function fetchAIAdvice(materialKey, confidence) {
+      // Найти или создать блок советов внутри report-card
+      const reportCard = document.getElementById('report-card');
       let adviceBlock = document.getElementById('ai-advice-block');
       if (!adviceBlock) {
-        const reportCard = document.getElementById('report-card');
         adviceBlock = document.createElement('div');
         adviceBlock.id = 'ai-advice-block';
-        adviceBlock.style.cssText = 'margin-top:14px;padding:14px;background:var(--accent-light,#e8f5e9);border-radius:12px;font-size:13.5px;line-height:1.6;';
+        adviceBlock.style.cssText = [
+          'margin:0 20px 16px',
+          'padding:14px 16px',
+          'background:var(--accent-light)',
+          'border:1px solid var(--accent-mid)',
+          'border-radius:12px',
+          'font-size:13.5px',
+          'line-height:1.65',
+        ].join(';');
         reportCard.appendChild(adviceBlock);
       }
-      adviceBlock.innerHTML = '<span style="color:#388e3c;">🤖 EcoBot загружает советы...</span>';
+
+      // Лоадер
+      adviceBlock.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);">
+          <div style="width:14px;height:14px;border:2px solid var(--accent-mid);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
+          <span style="font-size:13px;">EcoBot анализирует...</span>
+        </div>`;
+
       try {
-        const data = await apiCall('GET', '/api/ai/advice/' + materialKey);
-        let html = `<div style="font-weight:600;margin-bottom:6px;color:#2e7d32;">🤖 Советы EcoBot</div>`;
-        if (data.preparation && data.preparation.length) {
-          html += `<div style="margin-bottom:4px;font-weight:500;">Как подготовить:</div>`;
-          html += data.preparation.map(p => `<div>• ${p}</div>`).join('');
+        const data = await apiCall('POST', '/api/ai/waste-advice', {
+          material: materialKey,
+          confidence: confidence || 0.5,
+          lang: currentLang,
+        });
+
+        // Цвет и иконка urgency
+        const urgencyMap = {
+          now:     { color: '#2e7d32', bg: '#e8f5e9', icon: '✅' },
+          soon:    { color: '#e65100', bg: '#fff3e0', icon: '📍' },
+          special: { color: '#b71c1c', bg: '#ffebee', icon: '⚠️' },
+        };
+        const urg = urgencyMap[data.urgency] || urgencyMap['soon'];
+
+        let html = `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:18px;">${data.icon || '🤖'}</span>
+            <span style="font-weight:600;color:#1a1a18;font-size:14px;">EcoBot</span>
+            <span style="margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:${urg.bg};color:${urg.color};">${urg.icon} ${data.urgency === 'now' ? 'Обычный бак' : data.urgency === 'special' ? 'Опасный материал' : 'Спец. пункт'}</span>
+          </div>
+          <div style="font-size:13.5px;color:#333;margin-bottom:10px;">${data.instructions || ''}</div>`;
+
+        if (data.steps && data.steps.length) {
+          html += `<div style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);margin-bottom:6px;">Что делать:</div>`;
+          html += data.steps.map((s, i) => `
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:5px;">
+              <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i + 1}</span>
+              <span style="font-size:13.5px;color:#333;">${s}</span>
+            </div>`).join('');
         }
-        if (data.where) html += `<div style="margin-top:6px;">📍 <b>Куда сдать:</b> ${data.where}</div>`;
-        if (data.eco_fact) html += `<div style="margin-top:6px;color:#388e3c;">💡 ${data.eco_fact}</div>`;
+
+        if (data.where) {
+          html += `<div style="margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.7);border-radius:8px;font-size:13px;">
+            📍 <b>Куда:</b> ${data.where}
+          </div>`;
+        }
+
+        if (data.eco_tip) {
+          html += `<div style="margin-top:8px;font-size:12.5px;color:var(--accent);font-style:italic;">💡 ${data.eco_tip}</div>`;
+        }
+
         adviceBlock.innerHTML = html;
+
       } catch(e) {
-        adviceBlock.innerHTML = '<span style="color:#888;">AI-советы временно недоступны</span>';
+        adviceBlock.innerHTML = `<span style="color:var(--text-secondary);font-size:13px;">💬 AI-советы недоступны. Проверьте соединение.</span>`;
       }
     }
 
