@@ -17,7 +17,8 @@
     "uuid": "^9.0.0",
     "express-rate-limit": "^7.1.5",
     "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.7"
+    "nodemailer": "^6.9.7",
+    "resend": "^3.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
