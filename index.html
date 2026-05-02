@@ -1533,11 +1533,9 @@
       document.getElementById('banner-bar').style.width = pct + '%';
  
       if (nextLvl) {
-        document.getElementById('banner-level-next').textContent = (nextLvl.pts - state.points) + ' pts';
-        document.getElementById('banner-bar-label').textContent = state.points + ' / ' + nextLvl.pts;
+        document.getElementById('banner-level-next').textContent = state.points + ' / ' + nextLvl.pts;
       } else {
-        document.getElementById('banner-level-next').textContent = 'MAX';
-        document.getElementById('banner-bar-label').textContent = '★ MAX';
+        document.getElementById('banner-level-next').textContent = '★ MAX';
       }
     }
  
@@ -1897,27 +1895,25 @@
     }
  
     // ─── INIT ────────────────────────────────────────────────────────────────
-    loadState();
-    updateBanner();
-    renderLeaderboard();
-    renderRewards();
-    // loadModel() already called above at startup
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // BACKEND API INTEGRATION
-    // ═══════════════════════════════════════════════════════════════════════
-    const API_BASE = 'https://ecosen2-0.onrender.com'; // ← замени на свой URL после деплоя
-
-    // Safe storage — fallback to memory if localStorage blocked (Safari ITP, Firefox ETP)
+    // Объявляем authToken и currentUser ДО любых вызовов функций
     const _memStore = {};
     const safeStorage = {
       getItem: (k) => { try { return localStorage.getItem(k); } catch { return _memStore[k] ?? null; } },
       setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} _memStore[k] = v; },
       removeItem: (k) => { try { localStorage.removeItem(k); } catch {} delete _memStore[k]; },
     };
-
     let authToken = safeStorage.getItem('ecosen_token') || null;
     let currentUser = null;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BACKEND API
+    // ═══════════════════════════════════════════════════════════════════════
+    const API_BASE = 'https://ecosen2-0.onrender.com';
+
+    loadState();
+    updateBanner();
+    renderLeaderboard();
+    renderRewards();
 
     // ── API helper ──────────────────────────────────────────────────────────
     async function apiCall(method, path, body = null) {
