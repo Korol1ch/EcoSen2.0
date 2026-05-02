@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const { askGemini, askGeminiChat } = require('../services/gemini');
 
 const router = express.Router();
 
@@ -355,8 +356,6 @@ urgency: "now" = можно выбросить в обычный бак, "soon" 
 // ── POST /api/ai/chat ─────────────────────────────────────────────────────────
 // Чат с EcoBot (Gemini). Body: { message: string, context?: string, history?: [{role, content}] }
 // Требует авторизации.
-const { askGemini, askGeminiChat } = require('../services/gemini');
-
 router.post('/chat', async (req, res) => {  // auth optional — guests can use chat too
   try {
     const { message, context, history = [] } = req.body;

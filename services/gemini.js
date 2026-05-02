@@ -2,10 +2,10 @@ const https = require('https');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// Модели по приоритету (v1 API)
+// Модели по приоритету (v1beta supports 2.0 models)
 const GEMINI_MODELS = [
-  'gemini-2.0-flash-lite',
   'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
   'gemini-1.5-flash',
 ];
 
@@ -29,7 +29,7 @@ const CHAT_SYSTEM = `Ты — EcoBot, живой AI-помощник прило�
 function callGemini(model, contents, generationConfig) {
   return new Promise((resolve, reject) => {
     const bodyStr = JSON.stringify({ contents, generationConfig });
-    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
     const urlObj = new URL(url);
     const req = https.request({
       hostname: urlObj.hostname,

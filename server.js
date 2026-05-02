@@ -28,6 +28,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Required for Render (and other reverse proxies) — fixes express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+app.set('trust proxy', 1);
+
 // Rate limiter
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
