@@ -929,14 +929,21 @@ main {
  
     <!-- ── PROFILE PAGE ── -->
     <div class="page" id="profile-page">
-      <div class="profile-header">
+      <div class="profile-header" style="position:relative;">
         <div class="avatar" id="profile-avatar">🌱</div>
-        <div>
+        <div style="flex:1;">
           <div class="profile-name" id="profile-name-display">EcoUser</div>
           <div style="font-size:12px;color:#3a7d44;font-weight:600;margin-top:2px;" id="profile-username-display"></div>
           <div class="profile-level" id="profile-level-display">Уровень 1 · Новичок</div>
           <div class="profile-joined" id="profile-joined">Сегодня</div>
         </div>
+        <button onclick="logoutUser()" title="Выйти из аккаунта" style="
+          position:absolute;top:0;right:0;
+          background:none;border:1.5px solid #e5e3dd;border-radius:10px;
+          padding:6px 10px;font-size:12px;color:#7a7870;cursor:pointer;
+          font-family:'DM Sans',sans-serif;font-weight:600;
+          display:flex;align-items:center;gap:4px;
+        ">🚪 Выйти</button>
       </div>
 
       <!-- Admin panel button (shown only for admins) -->
@@ -2245,6 +2252,18 @@ main {
     }
 
 
+
+    function logoutUser() {
+      if (!confirm('Выйти из аккаунта?')) return;
+      safeStorage.removeItem('ecosen_token');
+      safeStorage.removeItem('ecosen_state');
+      authToken = null;
+      currentUser = null;
+      state = { points: 0, scans: 0, history: [] };
+      updateBanner();
+      updateProfile();
+      showAuthModal();
+    }
 
     // ── ADMIN PANEL ──────────────────────────────────────────────────────────
     let materialRates = [];
