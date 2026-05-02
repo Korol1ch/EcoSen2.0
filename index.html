@@ -1243,7 +1243,7 @@
           <div class="profile-level-str" id="profile-level-display">Уровень 1 · Новичок</div>
           <div class="profile-joined-str" id="profile-joined">Сегодня</div>
         </div>
-        <button class="logout-btn" onclick="logoutUser()">🚪 Выйти</button>
+        <button class="logout-btn" id="profile-auth-btn" onclick="handleProfileAuthBtn()">🚪 Выйти</button>
       </div>
 
       <div id="admin-panel-btn-wrap" style="display:none;">
@@ -1550,11 +1550,29 @@
       document.getElementById('profile-level-display').textContent =
         (lvl.idx + 1) + ' · ' + (lvl.name[currentLang] || lvl.name['ru']);
 
+      // Show/hide login or logout button
+      const authBtn = document.getElementById('profile-auth-btn');
+      if (authBtn) {
+        if (currentUser) {
+          authBtn.textContent = '🚪 ' + (currentLang === 'kk' ? 'Шығу' : 'Выйти');
+          authBtn.style.borderColor = '';
+          authBtn.style.color = '';
+        } else {
+          authBtn.textContent = '🔑 ' + (currentLang === 'kk' ? 'Кіру' : 'Войти');
+          authBtn.style.borderColor = 'var(--green-dim)';
+          authBtn.style.color = 'var(--green)';
+        }
+      }
+
       // Show username
       const usernameEl = document.getElementById('profile-username-display');
-      if (usernameEl && currentUser && currentUser.username) {
-        usernameEl.textContent = '@' + currentUser.username;
+      if (usernameEl) {
+        usernameEl.textContent = currentUser ? '@' + currentUser.username : '';
       }
+
+      // Update name display
+      const nameEl = document.getElementById('profile-name-display');
+      if (nameEl && currentUser) nameEl.textContent = currentUser.name;
 
       // Show admin button if admin
       const adminBtn = document.getElementById('admin-panel-btn-wrap');
@@ -2081,10 +2099,10 @@
         adviceBlock = document.createElement('div');
         adviceBlock.id = 'ai-advice-block';
         adviceBlock.style.cssText = [
-          'margin:0 20px 16px',
+          'margin:0 18px 16px',
           'padding:14px 16px',
-          'background:var(--accent-light)',
-          'border:1px solid var(--accent-mid)',
+          'background:var(--green-bg)',
+          'border:1px solid var(--green-dim)',
           'border-radius:12px',
           'font-size:13.5px',
           'line-height:1.65',
@@ -2094,8 +2112,8 @@
 
       // Лоадер
       adviceBlock.innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;color:var(--accent);">
-          <div style="width:14px;height:14px;border:2px solid var(--accent-mid);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
+        <div style="display:flex;align-items:center;gap:8px;color:var(--green);">
+          <div style="width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
           <span style="font-size:13px;">EcoBot анализирует...</span>
         </div>`;
 
@@ -2108,37 +2126,37 @@
 
         // Цвет и иконка urgency
         const urgencyMap = {
-          now:     { color: '#2e7d32', bg: '#e8f5e9', icon: '✅' },
-          soon:    { color: '#e65100', bg: '#fff3e0', icon: '📍' },
-          special: { color: '#b71c1c', bg: '#ffebee', icon: '⚠️' },
+          now:     { color: '#3fb950', bg: 'rgba(63,185,80,0.15)', icon: '✅' },
+          soon:    { color: '#d29922', bg: 'rgba(210,153,34,0.15)', icon: '📍' },
+          special: { color: '#f85149', bg: 'rgba(248,81,73,0.15)', icon: '⚠️' },
         };
         const urg = urgencyMap[data.urgency] || urgencyMap['soon'];
 
         let html = `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <span style="font-size:18px;">${data.icon || '🤖'}</span>
-            <span style="font-weight:600;color:#1a1a18;font-size:14px;">EcoBot</span>
+            <span style="font-weight:700;color:var(--text);font-size:14px;">EcoBot</span>
             <span style="margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:${urg.bg};color:${urg.color};">${urg.icon} ${data.urgency === 'now' ? (currentLang==='kk'?'Кәдімгі бак':'Обычный бак') : data.urgency === 'special' ? (currentLang==='kk'?'Қауіпті материал':'Опасный материал') : (currentLang==='kk'?'Арнайы пункт':'Спец. пункт')}</span>
           </div>
-          <div style="font-size:13.5px;color:#333;margin-bottom:10px;">${data.instructions || ''}</div>`;
+          <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:10px;">${data.instructions || ''}</div>`;
 
         if (data.steps && data.steps.length) {
-          html += `<div style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);margin-bottom:6px;">Что делать:</div>`;
+          html += `<div style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-dim);margin-bottom:6px;">Что делать:</div>`;
           html += data.steps.map((s, i) => `
             <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:5px;">
-              <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i + 1}</span>
-              <span style="font-size:13.5px;color:#333;">${s}</span>
+              <span style="width:20px;height:20px;border-radius:50%;background:var(--green-dim);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i + 1}</span>
+              <span style="font-size:13.5px;color:var(--text-muted);">${s}</span>
             </div>`).join('');
         }
 
         if (data.where) {
-          html += `<div style="margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.7);border-radius:8px;font-size:13px;">
-            ${currentLang==='kk'?'📍 <b>Қайда:</b>':'📍 <b>Куда:</b>'} ${data.where}
+          html += `<div style="margin-top:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border-subtle);border-radius:8px;font-size:13px;color:var(--text-muted);">
+            ${currentLang==='kk'?'📍 <b style="color:var(--text)">Қайда:</b>':'📍 <b style="color:var(--text)">Куда:</b>'} ${data.where}
           </div>`;
         }
 
         if (data.eco_tip) {
-          html += `<div style="margin-top:8px;font-size:12.5px;color:var(--accent);font-style:italic;">💡 ${data.eco_tip}</div>`;
+          html += `<div style="margin-top:8px;font-size:12.5px;color:var(--green);font-style:italic;">💡 ${data.eco_tip}</div>`;
         }
 
         adviceBlock.innerHTML = html;
@@ -2147,7 +2165,7 @@
         buildEcoChat(adviceBlock, materialKey);
 
       } catch(e) {
-        adviceBlock.innerHTML = `<span style="color:var(--text-secondary);font-size:13px;">💬 ${currentLang==='kk'?'AI-кеңестер қолжетімсіз. Байланысты тексеріңіз.':'AI-советы недоступны. Проверьте соединение.'}</span>`;
+        adviceBlock.innerHTML = `<span style="color:var(--text-muted);font-size:13px;">💬 ${currentLang==='kk'?'AI-кеңестер қолжетімсіз. Байланысты тексеріңіз.':'AI-советы недоступны. Проверьте соединение.'}</span>`;
       }
     }
 
@@ -2158,7 +2176,7 @@
       const chatWrap = document.createElement('div');
       chatWrap.style.cssText = [
         'margin-top:14px',
-        'border-top:1px solid var(--accent-mid)',
+        'border-top:1px solid var(--border)',
         'padding-top:12px',
       ].join(';');
 
@@ -2172,23 +2190,23 @@
         <div style="display:flex;gap:8px;align-items:flex-end;">
           <textarea id="ecobot-chat-input" rows="1" placeholder="${currentLang==='kk' ? 'EcoBot-қа сұрақ қойыңыз...' : 'Задайте вопрос EcoBot...'}" style="
             flex:1;padding:10px 12px;
-            border:1px solid var(--accent-mid);
+            border:1px solid var(--border);
             border-radius:10px;
             font-size:13.5px;
-            font-family:'DM Sans',sans-serif;
+            font-family:'Outfit',sans-serif;
             resize:none;outline:none;
-            background:#fff;
-            color:#1a1a18;
+            background:var(--surface2);
+            color:var(--text);
             line-height:1.4;
             max-height:80px;
             overflow-y:auto;
           "></textarea>
           <button id="ecobot-chat-send" style="
             width:36px;height:36px;flex-shrink:0;
-            background:var(--accent);color:#fff;
+            background:var(--green);color:#0d1117;
             border:none;border-radius:50%;cursor:pointer;
             font-size:16px;display:flex;align-items:center;justify-content:center;
-            transition:opacity 0.2s;
+            transition:opacity 0.2s;font-weight:700;
           ">➤</button>
         </div>
       `;
@@ -2215,15 +2233,15 @@
           'line-height:1.55',
           'white-space:pre-wrap',
           isUser
-            ? 'background:var(--accent);color:#fff;'
-            : 'background:rgba(255,255,255,0.85);color:#1a1a18;border:1px solid var(--accent-mid);',
+            ? 'background:var(--green-dim);color:#fff;'
+            : 'background:var(--surface2);color:var(--text);border:1px solid var(--border);',
         ].join(';');
 
         if (isLoading) {
           bubble.innerHTML = `<span style="display:inline-flex;gap:4px;align-items:center;">
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ecoDot 1s ease-in-out infinite;animation-delay:0s;"></span>
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.2s;"></span>
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.4s;"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:ecoDot 1s ease-in-out infinite;animation-delay:0s;"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.2s;"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.4s;"></span>
           </span>`;
         } else {
           bubble.textContent = text;
@@ -2571,6 +2589,14 @@
     }
 
 
+
+    function handleProfileAuthBtn() {
+      if (currentUser) {
+        logoutUser();
+      } else {
+        showAuthModal();
+      }
+    }
 
     function logoutUser() {
       if (!confirm('Выйти из аккаунта?')) return;
