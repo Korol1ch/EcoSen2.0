@@ -933,11 +933,22 @@ main {
         <div class="avatar" id="profile-avatar">🌱</div>
         <div>
           <div class="profile-name" id="profile-name-display">EcoUser</div>
+          <div style="font-size:12px;color:#3a7d44;font-weight:600;margin-top:2px;" id="profile-username-display"></div>
           <div class="profile-level" id="profile-level-display">Уровень 1 · Новичок</div>
           <div class="profile-joined" id="profile-joined">Сегодня</div>
         </div>
       </div>
- 
+
+      <!-- Admin panel button (shown only for admins) -->
+      <div id="admin-panel-btn-wrap" style="display:none;margin-bottom:16px;">
+        <button onclick="showAdminPanel()" style="
+          width:100%;padding:12px;background:linear-gradient(135deg,#1a1a18,#3a7d44);
+          color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;
+          font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;
+          justify-content:center;gap:8px;
+        ">⚙️ Панель администратора</button>
+      </div>
+
       <div class="stats-grid">
         <div class="stat-cell">
           <div class="stat-value" id="stat-pts">0</div>
@@ -945,19 +956,19 @@ main {
         </div>
         <div class="stat-cell">
           <div class="stat-value" id="stat-scans">0</div>
-          <div class="stat-label" data-i18n="stat_scans">Сканов</div>
+          <div class="stat-label" data-i18n="stat_scans">Сданий</div>
         </div>
         <div class="stat-cell">
           <div class="stat-value" id="stat-level">1</div>
           <div class="stat-label" data-i18n="stat_level">Уровень</div>
         </div>
       </div>
- 
-      <div class="section-title" data-i18n="history_title">История сканирований</div>
+
+      <div class="section-title" data-i18n="history_title">История сдачи</div>
       <div class="history-list" id="history-list">
         <div class="empty-state">
           <div class="empty-icon">📭</div>
-          <span data-i18n="history_empty">Пока нет сканирований</span>
+          <span data-i18n="history_empty">Пока нет сданий</span>
         </div>
       </div>
     </div>
@@ -1212,7 +1223,19 @@ main {
       document.getElementById('profile-avatar').textContent = lvl.emoji;
       document.getElementById('profile-level-display').textContent =
         (lvl.idx + 1) + ' · ' + (lvl.name[currentLang] || lvl.name['ru']);
- 
+
+      // Show username
+      const usernameEl = document.getElementById('profile-username-display');
+      if (usernameEl && currentUser && currentUser.username) {
+        usernameEl.textContent = '@' + currentUser.username;
+      }
+
+      // Show admin button if admin
+      const adminBtn = document.getElementById('admin-panel-btn-wrap');
+      if (adminBtn) {
+        adminBtn.style.display = (currentUser && currentUser.is_admin) ? 'block' : 'none';
+      }
+
       // History
       const histEl = document.getElementById('history-list');
       if (state.history.length === 0) {
@@ -1515,17 +1538,15 @@ main {
         document.getElementById('info-forbidden').textContent = info.forbidden;
         document.getElementById('info-tip').textContent = info.tip;
  
-        // Award points based on confidence
-        const pts = pct >= 0.8 ? 15 : pct >= 0.6 ? 10 : 5;
-        awardPoints(pts, info.title, info.icon);
+        // Scanner shows info only — points are awarded at drop-off station by admin
+        // awardPoints removed intentionally
       } else {
         document.getElementById('report-icon').textContent = 'ℹ️';
         document.getElementById('report-title').textContent = t('not_detected');
         document.getElementById('info-bin').textContent = '—';
         document.getElementById('info-forbidden').textContent = '—';
         document.getElementById('info-tip').textContent = best.className + ' (' + (pct*100).toFixed(1) + '%)';
-        // Still award 3 pts for trying
-        awardPoints(3, best.className, '🔍');
+        // No points for scan — points only awarded at station
       }
  
       reportCard.classList.add('visible');
@@ -2006,6 +2027,8 @@ main {
         <!-- STEP 2: Register form -->
         <div id="auth-step-register" style="display:none;">
           <div style="margin-bottom:12px;">${buildInput('auth-reg-name','text', currentLang==='kk' ? 'Атыңыз' : 'Имя')}</div>
+          <div style="margin-bottom:12px;">${buildInput('auth-reg-username','text', currentLang==='kk' ? 'Username (бірегей)' : 'Username (уникальный)')}</div>
+          <div style="font-size:11px;color:#7a7870;margin-top:-8px;margin-bottom:12px;padding-left:2px;">${currentLang==='kk'?'Тек әріптер, сандар және _ (3-30 таңба)':'Только буквы, цифры и _ (3-30 символов)'}</div>
           <div style="margin-bottom:12px;">${buildInput('auth-reg-email','email','Email')}</div>
           <div style="margin-bottom:18px;">${buildInput('auth-reg-password','password', currentLang==='kk' ? 'Пароль (мин. 6 таңба)' : 'Пароль (мин. 6 символов)')}</div>
           <button id="auth-send-code-btn" style="
@@ -2117,14 +2140,15 @@ main {
       // ── SEND CODE ─────────────────────────────────────────────────────────
       document.getElementById('auth-send-code-btn').addEventListener('click', async () => {
         const name = document.getElementById('auth-reg-name').value.trim();
+        const username = document.getElementById('auth-reg-username').value.trim();
         const email = document.getElementById('auth-reg-email').value.trim();
         const password = document.getElementById('auth-reg-password').value;
-        if (!name || !email || !password) { showErr(currentLang==='kk' ? 'Барлық өрістерді толтырыңыз' : 'Заполните все поля'); return; }
+        if (!name || !username || !email || !password) { showErr(currentLang==='kk' ? 'Барлық өрістерді толтырыңыз' : 'Заполните все поля'); return; }
         clearErr();
         const btn = document.getElementById('auth-send-code-btn');
         btn.textContent = currentLang==='kk' ? 'Жіберілуде...' : 'Отправка...'; btn.disabled = true;
         try {
-          await apiCall('POST', '/api/auth/send-code', { name, email, password });
+          await apiCall('POST', '/api/auth/send-code', { name, username, email, password });
           pendingEmail = email;
           document.getElementById('auth-code-email-hint').textContent = (currentLang==='kk' ? email + '-ге хат жіберілді' : 'Письмо отправлено на ' + email);
           showStep('code');
@@ -2221,6 +2245,122 @@ main {
     }
 
 
+
+    // ── ADMIN PANEL ──────────────────────────────────────────────────────────
+    let materialRates = [];
+
+    async function showAdminPanel() {
+      // Load material rates
+      try {
+        materialRates = await apiCall('GET', '/api/admin/material-rates');
+      } catch(e) {
+        alert('Ошибка загрузки ставок: ' + e.message); return;
+      }
+
+      // Remove old modal if exists
+      const old = document.getElementById('admin-modal');
+      if (old) old.remove();
+
+      const ratesOptions = materialRates.map(r =>
+        `<option value="${r.material}">${r.icon} ${r.name_ru} (${r.points_per_kg} бал/кг)</option>`
+      ).join('');
+
+      const modal = document.createElement('div');
+      modal.id = 'admin-modal';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;';
+      modal.innerHTML = `
+        <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-size:18px;font-weight:700;color:#1a1a18;">⚙️ Панель администратора</div>
+            <button onclick="document.getElementById('admin-modal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7a7870;">×</button>
+          </div>
+
+          <!-- Award points section -->
+          <div style="background:#f7f6f3;border-radius:14px;padding:18px;margin-bottom:16px;">
+            <div style="font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:14px;">📦 Начислить баллы пользователю</div>
+
+            <div style="margin-bottom:10px;">
+              <label style="font-size:12px;color:#7a7870;display:block;margin-bottom:4px;">Username</label>
+              <input id="admin-username-input" type="text" placeholder="например: eco_user123"
+                style="width:100%;padding:10px 12px;border:1.5px solid #e5e3dd;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;" />
+            </div>
+
+            <div style="margin-bottom:10px;">
+              <label style="font-size:12px;color:#7a7870;display:block;margin-bottom:4px;">Тип мусора</label>
+              <select id="admin-material-select"
+                style="width:100%;padding:10px 12px;border:1.5px solid #e5e3dd;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:#fff;box-sizing:border-box;">
+                ${ratesOptions}
+              </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <label style="font-size:12px;color:#7a7870;display:block;margin-bottom:4px;">Вес (кг)</label>
+              <input id="admin-weight-input" type="number" step="0.01" min="0.01" placeholder="например: 1.5"
+                style="width:100%;padding:10px 12px;border:1.5px solid #e5e3dd;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;" />
+            </div>
+
+            <!-- Preview -->
+            <div id="admin-preview" style="background:#eaf2ec;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#3a7d44;display:none;"></div>
+
+            <button id="admin-award-btn" onclick="adminAwardPoints()" style="
+              width:100%;padding:13px;background:#3a7d44;color:#fff;border:none;
+              border-radius:10px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;
+            ">✅ Начислить баллы</button>
+          </div>
+
+          <!-- Rates info -->
+          <div style="background:#f7f6f3;border-radius:14px;padding:18px;">
+            <div style="font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:12px;">📊 Ставки баллов</div>
+            ${materialRates.map(r => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e5e3dd;">
+                <div style="font-size:13px;">${r.icon} ${r.name_ru}</div>
+                <div style="font-size:12px;color:#3a7d44;font-weight:600;">${r.points_per_kg} бал/кг &nbsp;·&nbsp; ${r.co2_per_kg} кг CO₂/кг</div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+
+      document.body.appendChild(modal);
+
+      // Live preview on input change
+      ['admin-weight-input','admin-material-select'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateAdminPreview);
+      });
+    }
+
+    function updateAdminPreview() {
+      const weight = parseFloat(document.getElementById('admin-weight-input').value);
+      const material = document.getElementById('admin-material-select').value;
+      const preview = document.getElementById('admin-preview');
+      if (!weight || weight <= 0 || !material) { preview.style.display='none'; return; }
+      const rate = materialRates.find(r => r.material === material);
+      if (!rate) { preview.style.display='none'; return; }
+      const pts = Math.round(rate.points_per_kg * weight);
+      const co2 = (rate.co2_per_kg * weight).toFixed(2);
+      preview.style.display = 'block';
+      preview.textContent = `💡 Будет начислено: ${pts} баллов · Сэкономлено CO₂: ${co2} кг`;
+    }
+
+    async function adminAwardPoints() {
+      const username = document.getElementById('admin-username-input').value.trim();
+      const material = document.getElementById('admin-material-select').value;
+      const weight_kg = parseFloat(document.getElementById('admin-weight-input').value);
+      if (!username) { alert('Введите username'); return; }
+      if (!weight_kg || weight_kg <= 0) { alert('Введите вес'); return; }
+
+      const btn = document.getElementById('admin-award-btn');
+      btn.textContent = 'Отправка...'; btn.disabled = true;
+      try {
+        const res = await apiCall('POST', '/api/admin/award', { username, material, weight_kg });
+        btn.textContent = '✅ Начислить баллы'; btn.disabled = false;
+        document.getElementById('admin-username-input').value = '';
+        document.getElementById('admin-weight-input').value = '';
+        document.getElementById('admin-preview').style.display = 'none';
+        alert(`✅ Готово!\nПользователь: @${res.user.username}\nНачислено: +${res.awarded_points} баллов\nМатериал: ${res.material} (${res.weight_kg} кг)\nCO₂: ${res.co2_saved.toFixed(2)} кг`);
+      } catch(e) {
+        btn.textContent = '✅ Начислить баллы'; btn.disabled = false;
+        alert('Ошибка: ' + e.message);
+      }
+    }
 
     // ── Start ────────────────────────────────────────────────────────────────
     tryAutoLogin();

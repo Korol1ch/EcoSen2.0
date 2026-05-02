@@ -46,6 +46,7 @@ app.use('/api/operators',     require('./routes/operators'));
 app.use('/api/ai',            require('./routes/ai'));
 app.use('/api/achievements',  require('./routes/achievements'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/admin',         require('./routes/admin'));
 
 // Health check
 app.get('/health', (req, res) => {

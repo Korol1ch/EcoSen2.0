@@ -10,15 +10,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'ecosen_secret_key_2024';
 // ─── STEP 1: Send verification code ──────────────────────────────────────────
 router.post('/send-code', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ error: 'Имя, email и пароль обязательны' });
+    const { name, username, email, password } = req.body;
+    if (!name || !username || !email || !password)
+      return res.status(400).json({ error: 'Имя, username, email и пароль обязательны' });
     if (password.length < 6)
       return res.status(400).json({ error: 'Пароль минимум 6 символов' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return res.status(400).json({ error: 'Неверный формат email' });
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username))
+      return res.status(400).json({ error: 'Username: 3-30 символов, только буквы, цифры и _' });
 
     const normalEmail = email.toLowerCase().trim();
+    const normalUsername = username.toLowerCase().trim();
+
+    // Check username uniqueness
+    const existingUsername = await pool.query('SELECT id FROM users WHERE username = $1', [normalUsername]);
+    if (existingUsername.rows.length > 0)
+      return res.status(409).json({ error: 'Этот username уже занят' });
 
     const existing = await pool.query('SELECT id, is_verified FROM users WHERE email = $1', [normalEmail]);
     if (existing.rows.length > 0 && existing.rows[0].is_verified)
@@ -39,8 +47,8 @@ router.post('/send-code', async (req, res) => {
     const expires_at = new Date(Date.now() + 15 * 60 * 1000);
 
     await pool.query(
-      'INSERT INTO email_verifications (email, name, pass_hash, code, expires_at) VALUES ($1,$2,$3,$4,$5)',
-      [normalEmail, name.trim(), pass_hash, code, expires_at]
+      'INSERT INTO email_verifications (email, name, username, pass_hash, code, expires_at) VALUES ($1,$2,$3,$4,$5,$6)',
+      [normalEmail, name.trim(), normalUsername, pass_hash, code, expires_at]
     );
 
     try {
@@ -98,17 +106,19 @@ router.post('/verify-code', async (req, res) => {
       return res.status(409).json({ error: 'Этот email уже зарегистрирован' });
     }
 
+    const isAdmin = normalEmail === 'ismagulshakarim0909@gmail.com';
+
     const userResult = await pool.query(
-      `INSERT INTO users (name, email, password_hash, is_verified)
-       VALUES ($1,$2,$3,TRUE)
-       RETURNING id, name, email, points, scans, trust_score, is_verified, created_at`,
-      [pending.name, normalEmail, pending.pass_hash]
+      `INSERT INTO users (name, username, email, password_hash, is_verified, is_admin)
+       VALUES ($1,$2,$3,$4,TRUE,$5)
+       RETURNING id, name, username, email, points, scans, trust_score, is_verified, is_admin, created_at`,
+      [pending.name, pending.username, normalEmail, pending.pass_hash, isAdmin]
     );
 
     await pool.query('DELETE FROM email_verifications WHERE email = $1', [normalEmail]);
 
     const user = userResult.rows[0];
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ user, token });
 
   } catch (err) {
@@ -172,7 +182,7 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Неверный email или пароль' });
 
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, is_admin: user.is_admin }, JWT_SECRET, { expiresIn: '30d' });
     const { password_hash, ...safeUser } = user;
     res.json({ user: safeUser, token });
   } catch (err) {
@@ -185,7 +195,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', require('../middleware/auth'), async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, telegram_id, points, scans, trust_score, is_verified, created_at FROM users WHERE id = $1',
+      'SELECT id, name, username, email, telegram_id, points, scans, trust_score, is_admin, is_verified, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Пользователь не найден' });
