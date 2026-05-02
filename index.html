@@ -1294,7 +1294,7 @@ main {
           <div class="reward-name">${r.name[currentLang] || r.name['ru']}</div>
           <div class="reward-desc">${r.desc[currentLang] || r.desc['ru']}</div>
           <div class="reward-cost${canAfford ? ' available' : ''}">★ ${r.cost}</div>
-          <div class="coming-soon-badge">' + (currentLang === 'kk' ? 'жақында' : 'скоро') + '</div>
+          <div class="coming-soon-badge">${currentLang === 'kk' ? 'жақында' : 'скоро'}</div>
         </div>`;
       }).join('');
     }
@@ -1325,10 +1325,6 @@ main {
         "Стекло":  { icon:"🫙", title:"Стекло",   bin:"Зелёный контейнер",forbidden:"Керамика",             tip:"Промойте стеклянную тару. Снимайте крышки." },
         "Метал":   { icon:"🔩", title:"Металл",   bin:"Серый контейнер",  forbidden:"Аккумуляторы",         tip:"Сожмите алюминиевые банки. Разделяйте сталь и алюминий." },
         "Картон":  { icon:"📦", title:"Картон",   bin:"Синий контейнер",  forbidden:"Жирный картон",        tip:"Сложите картон плоско и защитите от влаги перед сдачей." },
-      },
-        "Стекло":  { icon:"🫙", title:"Glass",    bin:"Green bin",   forbidden:"Ceramics",       tip:"Rinse glass containers. Remove caps and lids." },
-        "Метал":   { icon:"🔩", title:"Metal",    bin:"Grey bin",    forbidden:"Batteries",      tip:"Crush aluminium cans. Separate steel from aluminium." },
-        "Картон":  { icon:"📦", title:"Cardboard",bin:"Blue bin",    forbidden:"Greasy cardboard",tip:"Flatten boxes and keep dry before recycling." },
       }
     };
  
