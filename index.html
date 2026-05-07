@@ -1,2728 +1,1894 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EcoSen — умная сортировка</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>EcoSen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <style>
+    /* ══════════════════════════════════════════════════
+       RESET & ROOT
+    ══════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --surface2: #1c2330;
-      --border: #30363d;
-      --border-subtle: #21262d;
-      --text: #e6edf3;
-      --text-muted: #7d8590;
-      --text-dim: #484f58;
-      --green: #3fb950;
-      --green-dim: #238636;
-      --green-glow: rgba(63,185,80,0.15);
-      --green-bg: rgba(63,185,80,0.08);
-      --amber: #d29922;
-      --amber-bg: rgba(210,153,34,0.1);
-      --red: #f85149;
-      --red-bg: rgba(248,81,73,0.1);
-      --blue: #388bfd;
-      --blue-bg: rgba(56,139,253,0.1);
-      --radius-sm: 8px;
-      --radius: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 20px;
+      --green:        #017235;
+      --green-light:  #e8f5ee;
+      --green-mid:    #2e7d32;
+      --white:        #ffffff;
+      --bg:           #f4f6f4;
+      --text:         #1a1a1a;
+      --text-muted:   #6b7d75;
+      --text-dim:     #9eada8;
+      --border:       #dde8e3;
+      --card-shadow:  0 2px 16px rgba(1,114,53,0.10);
+      --card-shadow-hover: 0 6px 28px rgba(1,114,53,0.18);
+      --radius-sm:    10px;
+      --radius:       16px;
+      --radius-lg:    20px;
+      --radius-xl:    28px;
+      --header-h:     62px;
+      --nav-h:        72px;
+      --red:          #e53935;
+      --amber:        #f59e0b;
     }
-
     html { scroll-behavior: smooth; }
-
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Montserrat', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       -webkit-font-smoothing: antialiased;
     }
-
     a { text-decoration: none; color: inherit; }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* ── SCROLLBAR ── */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-    /* ═══════════════════════════════ HEADER ═══════════════════════════════ */
+    /* ══════════════════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════════════════ */
     header {
-      background: rgba(13,17,23,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-subtle);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      width: 100%;
+      height: var(--header-h);
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
     }
-
     .header-inner {
-      max-width: 480px;
-      margin: 0 auto;
-      padding: 0 16px;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      max-width: 480px; margin: 0 auto;
+      padding: 0 20px; height: 100%;
+      display: flex; align-items: center; justify-content: space-between;
     }
-
     .logo {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text);
-    }
-
-    .logo-leaf {
-      width: 28px; height: 28px;
-      background: linear-gradient(135deg, #3fb950, #2ea043);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-      box-shadow: 0 0 12px rgba(63,185,80,0.4);
-    }
-
-    .logo span { color: var(--green); }
-
-    .lang-btn {
-      padding: 5px 14px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      background: var(--surface);
-      color: var(--text-muted);
-      font-family: 'Outfit', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
       cursor: pointer;
-      transition: all 0.2s;
+    }
+    .logo img { width: 36px; height: 36px; object-fit: contain; }
+    .logo-text {
+      font-size: 20px; font-weight: 800;
+      color: var(--green); letter-spacing: -0.5px;
+    }
+
+    /* ── Burger Button ── */
+    .burger-btn {
+      width: 40px; height: 40px;
+      background: var(--green-light);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 5px;
+      padding: 0; transition: all 0.25s;
+      position: relative; z-index: 210;
+    }
+    .burger-btn:hover { background: #d0ead9; border-color: var(--green); }
+    .burger-btn .bar {
+      width: 18px; height: 2px;
+      background: var(--green);
+      border-radius: 2px;
+      transition: all 0.3s cubic-bezier(.4,0,.2,1);
+      transform-origin: center;
+    }
+    .burger-btn.open .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .burger-btn.open .bar:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .burger-btn.open .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ── Burger Drawer ── */
+    .menu-overlay {
+      position: fixed; inset: 0;
+      background: transparent;
+      z-index: 195; pointer-events: none;
+      transition: background 0.3s;
+    }
+    .menu-overlay.open { background: rgba(0,0,0,0.35); pointer-events: all; }
+    .menu-drawer {
+      position: fixed;
+      top: var(--header-h); right: 0;
+      width: min(300px, 88vw);
+      height: calc(100dvh - var(--header-h));
+      background: #fff;
+      border-left: 1px solid var(--border);
+      z-index: 200;
+      transform: translateX(100%);
+      transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+    }
+    .menu-drawer.open { transform: translateX(0); }
+    .drawer-user {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .drawer-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--green-light); border: 2px solid var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .drawer-user-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .drawer-user-pts { font-size: 12px; font-weight: 600; color: var(--green); margin-top: 2px; }
+    .drawer-nav { padding: 10px 12px; flex: 1; }
+    .drawer-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 12px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: all 0.18s;
+      font-size: 15px; font-weight: 600; color: var(--text-muted);
+      border: 1.5px solid transparent;
+      margin-bottom: 4px;
+    }
+    .drawer-item:hover, .drawer-item.active {
+      background: var(--green-light); border-color: #b8ddc8; color: var(--green);
+    }
+    .drawer-item-icon { font-size: 20px; width: 28px; text-align: center; }
+    .drawer-divider { height: 1px; background: var(--border); margin: 6px 16px; }
+    .drawer-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .drawer-lang-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .drawer-lang-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+    .lang-toggle {
+      display: flex; background: var(--bg); border-radius: 20px;
+      border: 1.5px solid var(--border); overflow: hidden;
+    }
+    .lang-opt {
+      padding: 5px 14px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; color: var(--text-muted);
       letter-spacing: 0.5px;
     }
-
-    .lang-btn:hover {
-      border-color: var(--green);
-      color: var(--green);
-      background: var(--green-bg);
+    .lang-opt.active { background: var(--green); color: #fff; }
+    .drawer-auth-btn {
+      width: 100%; padding: 12px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .drawer-auth-btn:hover { opacity: 0.88; }
+    .drawer-auth-btn.logout-style {
+      background: #fff; color: var(--red);
+      border: 1.5px solid #f5c6c6;
     }
 
-    /* ═══════════════════════════════ BOTTOM NAV ═══════════════════════════ */
+    /* ══════════════════════════════════════════════════
+       BOTTOM NAV
+    ══════════════════════════════════════════════════ */
     .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0; right: 0;
-      z-index: 100;
-      background: rgba(13,17,23,0.92);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--border-subtle);
-      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      height: var(--nav-h);
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
     }
-
     .bottom-nav-inner {
-      max-width: 480px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      max-width: 480px; margin: 0 auto; height: 100%;
+      display: grid; grid-template-columns: repeat(4, 1fr);
     }
-
     .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      padding: 6px 4px;
-      cursor: pointer;
-      border: none;
-      background: none;
-      color: var(--text-dim);
-      font-family: 'Outfit', sans-serif;
-      transition: all 0.2s;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; cursor: pointer; border: none; background: none;
+      color: var(--text-dim); font-family: 'Montserrat', sans-serif;
+      transition: all 0.2s; padding: 6px 4px;
     }
-
-    .nav-item .nav-icon {
-      font-size: 20px;
-      line-height: 1;
-      transition: transform 0.2s;
-    }
-
-    .nav-item .nav-label {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.2px;
-    }
-
-    .nav-item.active {
-      color: var(--green);
-    }
-
-    .nav-item.active .nav-icon {
-      transform: scale(1.1);
-    }
-
+    .nav-item .nav-icon { font-size: 22px; line-height: 1; transition: transform 0.2s; }
+    .nav-item .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+    .nav-item.active { color: var(--green); }
+    .nav-item.active .nav-icon { transform: scale(1.12); }
     .nav-item:not(.active):hover { color: var(--text-muted); }
 
-    /* ═══════════════════════════════ MAIN ═════════════════════════════════ */
+    /* ══════════════════════════════════════════════════
+       PAGES & MAIN
+    ══════════════════════════════════════════════════ */
     .page { display: none; }
     .page.active { display: flex; flex-direction: column; }
-
     main {
-      flex: 1;
-      max-width: 480px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 20px 16px 90px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      flex: 1; max-width: 480px; width: 100%;
+      margin: 0 auto; padding: 20px 16px calc(var(--nav-h) + 16px);
+      display: flex; flex-direction: column; gap: 14px;
     }
 
-    /* ═══════════════════════════════ LEVEL BANNER ══════════════════════════ */
-    .level-banner {
-      background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      position: relative;
+    /* ══════════════════════════════════════════════════
+       HOME PAGE — SECTION 1 HERO
+    ══════════════════════════════════════════════════ */
+    #home-page main { padding: 0 0 calc(var(--nav-h) + 0px); gap: 0; }
+
+    .hero-section {
+      position: relative; width: 100%;
+      height: calc(100dvh - var(--header-h) - var(--nav-h));
+      min-height: 380px;
+      display: flex; align-items: flex-start; justify-content: center;
       overflow: hidden;
     }
-
-    .level-banner::before {
+    .hero-bg {
+      position: absolute; inset: 0;
+      background-image: url('img/main.png');
+      background-size: cover; background-position: center top;
+    }
+    .hero-bg::after {
       content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--green), transparent);
-      opacity: 0.5;
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.15) 0%,
+        rgba(255,255,255,0.55) 50%,
+        rgba(255,255,255,0.92) 100%
+      );
     }
-
-    .level-xp-circle {
-      width: 52px; height: 52px;
-      border-radius: 50%;
-      background: var(--green-bg);
-      border: 2px solid var(--green-dim);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      position: relative;
-    }
-
-    .level-xp-circle-inner {
+    .hero-content {
+      position: relative; z-index: 2;
+      width: 90%; max-width: 400px;
+      padding: 10vw 0 32px;
+      display: flex; flex-direction: column; align-items: center;
       text-align: center;
-      line-height: 1.1;
     }
-
-    .level-xp-num {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--green);
-      display: block;
-    }
-
-    .level-xp-label {
-      font-size: 9px;
-      font-weight: 600;
-      color: var(--green);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .level-info { flex: 1; min-width: 0; }
-
-    .level-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-
-    .level-progress-track {
-      height: 4px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-bottom: 4px;
-    }
-
-    .level-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--green-dim), var(--green));
-      border-radius: 99px;
-      transition: width 0.8s cubic-bezier(.4,0,.2,1);
-      width: 0%;
-      box-shadow: 0 0 6px rgba(63,185,80,0.5);
-    }
-
-    .level-next-label {
-      font-size: 11px;
-      color: var(--text-dim);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* ═══════════════════════════════ PAGE HERO ═════════════════════════════ */
-    .hero-block {
-      padding: 4px 0 2px;
-    }
-
     .hero-title {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.8px;
-      line-height: 1.2;
-      color: var(--text);
+      font-size: 7vw; font-weight: 700;
+      line-height: 1.2; color: var(--text);
+      margin-bottom: 14px; max-width: 340px;
     }
+    .hero-title span { color: var(--green); }
+    .hero-sub {
+      font-size: 4vw; font-weight: 400;
+      color: var(--text-muted); line-height: 1.6;
+      margin-bottom: 28px; max-width: 300px;
+    }
+    .hero-btns { display: flex; flex-direction: column; gap: 12px; width: 70vw; max-width: 280px; }
+    .btn-green {
+      width: 100%; padding: 14px 20px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: 3vw;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 4vw; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 18px rgba(1,114,53,0.35);
+    }
+    .btn-green:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-green:active { transform: scale(0.98); }
+    .btn-outline {
+      width: 100%; padding: 13px 20px;
+      background: transparent; color: var(--green);
+      border: 2px solid var(--green);
+      border-radius: 3vw;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 4vw; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-outline:hover { background: var(--green-light); }
 
-    .hero-title em {
-      font-style: normal;
+    /* ── HOME SECTION 2 — REWARDS ── */
+    .home-section {
+      padding: 28px 16px;
+      max-width: 480px; margin: 0 auto; width: 100%;
+    }
+    .section-eyebrow {
+      font-size: 3vw; font-weight: 700;
+      color: var(--green); opacity: 0.8;
+      letter-spacing: 1px; margin-bottom: 4px;
+    }
+    .section-heading {
+      font-size: 5.5vw; font-weight: 700;
+      color: var(--text); margin-bottom: 18px;
+      opacity: 0.85;
+    }
+    .rewards-slider {
+      display: flex; gap: 14px;
+      overflow-x: auto; padding-bottom: 4px;
+      scroll-snap-type: x mandatory; scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .rewards-slider::-webkit-scrollbar { display: none; }
+    .reward-card-home {
+      flex: 0 0 56vw; max-width: 220px;
+      background: #fff; border-radius: 4vw;
+      box-shadow: var(--card-shadow);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 18px 12px; text-align: center;
+      scroll-snap-align: start;
+      cursor: pointer; transition: box-shadow 0.2s, transform 0.2s;
+      border: 1.5px solid var(--border);
+    }
+    .reward-card-home:hover { box-shadow: var(--card-shadow-hover); transform: translateY(-2px); }
+    .reward-card-home img { width: 65%; object-fit: contain; margin-bottom: 10px; }
+    .reward-card-home .rc-emoji { font-size: 38px; margin-bottom: 10px; }
+    .reward-card-home p { font-size: 4.5vw; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .reward-card-home span { font-size: 3.5vw; font-weight: 600; color: var(--green); }
+    .reward-more-card {
+      background: var(--green-light); border-color: #b8ddc8;
       color: var(--green);
     }
+    .reward-more-card p { color: var(--green) !important; font-size: 4vw !important; }
 
-    .hero-sub {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-top: 5px;
-      font-weight: 400;
-      line-height: 1.5;
+    /* ── HOME SECTION 3 — HOW IT WORKS ── */
+    .steps-carousel-wrap { width: 90%; margin: 0 auto; position: relative; }
+    .steps-carousel { overflow: hidden; }
+    .steps-track {
+      display: flex; transition: transform 0.4s cubic-bezier(.4,0,.2,1);
     }
+    .step-card-home {
+      flex: 0 0 100%;
+      background: #fff; border-radius: 5vw;
+      border: 1.5px solid var(--border);
+      padding: 5vw;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; min-height: 32vw;
+    }
+    .step-num-badge {
+      width: 10vw; height: 10vw; max-width: 42px; max-height: 42px;
+      background: var(--green-mid); color: #fff;
+      border-radius: 3vw; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 4vw; font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .step-icon-home { font-size: 9vw; margin-bottom: 10px; }
+    .step-title-home { font-size: 5vw; font-weight: 700; margin-bottom: 6px; }
+    .step-desc-home { font-size: 3.8vw; color: var(--text-muted); line-height: 1.5; }
+    .carousel-dots {
+      display: flex; justify-content: center; gap: 6px; margin-top: 16px;
+    }
+    .carousel-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #cfd8d3; border: none; cursor: pointer; padding: 0;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .carousel-dot.active { background: var(--green-mid); transform: scale(1.2); }
 
-    /* ═══════════════════════════════ UPLOAD CARD ═══════════════════════════ */
+    /* ── LEVEL BANNER (scan page) ── */
+    .level-banner {
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: var(--card-shadow);
+      position: relative; overflow: hidden;
+    }
+    .level-banner::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--green-mid), var(--green));
+    }
+    .level-xp-circle {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--green-light); border: 2.5px solid var(--green);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .level-xp-num { font-size: 14px; font-weight: 800; color: var(--green); display: block; line-height: 1; }
+    .level-xp-label { font-size: 9px; font-weight: 700; color: var(--green); text-transform: uppercase; }
+    .level-info { flex: 1; min-width: 0; }
+    .level-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+    .level-progress-track { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+    .level-progress-fill { height: 100%; background: linear-gradient(90deg, var(--green-mid), var(--green)); border-radius: 99px; transition: width 0.8s cubic-bezier(.4,0,.2,1); width: 0%; }
+    .level-next-label { font-size: 10px; color: var(--text-dim); font-weight: 600; }
+
+    /* ── SCAN PAGE HERO ── */
+    .page-hero { padding: 4px 0 2px; }
+    .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+    .page-title em { font-style: normal; color: var(--green); }
+    .page-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; font-weight: 500; line-height: 1.5; }
+
+    /* ── UPLOAD CARD ── */
     .upload-card {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      box-shadow: var(--card-shadow);
     }
-
     .upload-zone {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 220px;
-      cursor: pointer;
-      background: var(--surface);
-      transition: background 0.2s;
-      border-bottom: 1px solid var(--border-subtle);
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 200px; cursor: pointer; background: #fff;
+      transition: background 0.2s; border-bottom: 1px solid var(--border);
     }
-
-    .upload-zone:hover { background: var(--surface2); }
-
+    .upload-zone:hover { background: var(--green-light); }
     .upload-zone.has-image { min-height: 240px; background: #000; }
-
-    #uploaded-image {
-      max-width: 100%;
-      max-height: 240px;
-      object-fit: contain;
-      display: none;
-    }
-
-    .upload-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      pointer-events: none;
-      padding: 32px 24px;
-    }
-
+    #uploaded-image { max-width: 100%; max-height: 240px; object-fit: contain; display: none; }
+    .upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: none; padding: 28px 20px; }
     .upload-icon-wrap {
-      width: 64px; height: 64px;
-      border-radius: 16px;
-      background: var(--green-bg);
-      border: 1.5px dashed var(--green-dim);
+      width: 60px; height: 60px; border-radius: 16px;
+      background: var(--green-light); border: 2px dashed var(--green);
       display: flex; align-items: center; justify-content: center;
-      font-size: 28px;
-      transition: all 0.2s;
+      font-size: 26px; transition: all 0.2s;
     }
-
-    .upload-zone:hover .upload-icon-wrap {
-      border-color: var(--green);
-      background: rgba(63,185,80,0.12);
-      transform: scale(1.05);
-    }
-
-    .upload-placeholder-text {
-      text-align: center;
-    }
-
-    .upload-placeholder-text p {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 3px;
-    }
-
-    .upload-placeholder-text span {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
+    .upload-zone:hover .upload-icon-wrap { transform: scale(1.06); background: #c8e6d0; }
+    .upload-placeholder p { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; text-align: center; }
+    .upload-placeholder span { font-size: 12px; color: var(--text-muted); font-weight: 500; }
     #image-upload { display: none; }
-
-    /* Кнопки под зоной загрузки */
-    .btn-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; }
     .btn {
-      padding: 15px 16px;
-      font-size: 14px;
-      font-weight: 600;
-      font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      transition: opacity 0.15s, background 0.15s;
-      letter-spacing: 0.1px;
+      padding: 14px 16px; font-size: 13px; font-weight: 700;
+      font-family: 'Montserrat', sans-serif; cursor: pointer; border: none;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: opacity 0.15s; letter-spacing: 0.1px;
     }
-
     .btn:hover { opacity: 0.88; }
     .btn:active { opacity: 0.7; transform: scale(0.98); }
-
-    .btn-primary {
-      background: var(--green);
-      color: #0d1117;
-      font-weight: 700;
-    }
-
-    .btn-secondary {
-      background: var(--surface2);
-      color: var(--text-muted);
-      border-left: 1px solid var(--border-subtle);
-    }
-
-    .btn-secondary:hover { color: var(--text); }
-
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-secondary { background: var(--green-light); color: var(--green); border-left: 1px solid var(--border); }
     #model-status {
-      font-size: 11px;
-      text-align: center;
-      padding: 5px 0;
-      color: var(--text-muted);
-      display: none;
-      background: var(--surface2);
-      border-top: 1px solid var(--border-subtle);
+      font-size: 11px; text-align: center; padding: 6px 0;
+      color: var(--text-muted); display: none;
+      background: var(--bg); border-top: 1px solid var(--border);
+      font-weight: 600;
     }
 
-    /* ═══════════════════════════════ LOADING ═══════════════════════════════ */
+    /* ── LOADING ── */
     .loading-card {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 28px 20px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      font-size: 14px;
-      color: var(--text-muted);
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px 20px;
+      display: none; align-items: center; justify-content: center;
+      gap: 12px; font-size: 14px; color: var(--text-muted); font-weight: 600;
+      box-shadow: var(--card-shadow);
     }
-
     .loading-card.visible { display: flex; }
-
     .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid var(--border);
-      border-top-color: var(--green);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
+      width: 20px; height: 20px; border: 2.5px solid var(--border);
+      border-top-color: var(--green); border-radius: 50%;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes ecoDot {
-      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
       40% { transform: scale(1.1); opacity: 1; }
     }
-
-    /* ═══════════════════════════════ RESULT CARD ═══════════════════════════ */
-    .report-card {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      display: none;
-    }
-
-    .report-card.visible {
-      display: block;
-      animation: slideUp 0.35s cubic-bezier(.34,1.56,.64,1);
-    }
-
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(16px) scale(0.98); }
+      from { opacity: 0; transform: translateY(14px) scale(0.98); }
       to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* Зелёная полоска сверху результата */
-    .report-top-stripe {
-      height: 3px;
-      background: linear-gradient(90deg, var(--green-dim), var(--green), var(--green-dim));
+    /* ── RESULT CARD ── */
+    .report-card {
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      display: none; box-shadow: var(--card-shadow);
     }
-
+    .report-card.visible { display: block; animation: slideUp 0.35s cubic-bezier(.34,1.56,.64,1); }
+    .report-top-stripe { height: 4px; background: linear-gradient(90deg, var(--green-mid), var(--green)); }
     .report-header {
-      padding: 16px 18px 14px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 16px; display: flex; align-items: center;
+      gap: 12px; border-bottom: 1px solid var(--border);
     }
-
     .report-icon-wrap {
-      width: 44px; height: 44px;
-      border-radius: 12px;
-      background: var(--green-bg);
-      border: 1px solid var(--green-dim);
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--green-light); border: 1.5px solid #b8ddc8;
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
-      flex-shrink: 0;
+      font-size: 22px; flex-shrink: 0;
     }
-
     .report-header-text { flex: 1; min-width: 0; }
-    .report-title { font-size: 17px; font-weight: 700; color: var(--text); }
-    .report-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
-
+    .report-title { font-size: 16px; font-weight: 800; color: var(--text); }
+    .report-sub { font-size: 12px; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
     .confidence-pill {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 5px 10px;
-      border-radius: 20px;
-      background: var(--green-bg);
-      color: var(--green);
-      border: 1px solid var(--green-dim);
-      white-space: nowrap;
+      font-size: 12px; font-weight: 700; padding: 4px 10px;
+      border-radius: 20px; background: var(--green-light);
+      color: var(--green); border: 1.5px solid #b8ddc8; white-space: nowrap;
     }
-
-    .confidence-pill.low {
-      background: var(--amber-bg);
-      color: var(--amber);
-      border-color: rgba(210,153,34,0.3);
-    }
-
-    /* Прогресс-бар уверенности */
-    .confidence-section {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .bar-label-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
+    .confidence-pill.low { background: #fff8e1; color: var(--amber); border-color: #fde68a; }
+    .confidence-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
     .bar-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-dim);
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 7px; display: block;
     }
-
-    .bar-track {
-      height: 6px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
+    .bar-track { height: 7px; background: var(--bg); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
     .bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, var(--green-dim), var(--green));
-      transition: width 0.7s cubic-bezier(.4,0,.2,1);
-      width: 0%;
-      box-shadow: 0 0 6px rgba(63,185,80,0.4);
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--green-mid), var(--green));
+      transition: width 0.7s cubic-bezier(.4,0,.2,1); width: 0%;
     }
-
-    /* Info cells */
     .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      background: var(--border-subtle);
-      border-top: 1px solid var(--border-subtle);
-      border-bottom: 1px solid var(--border-subtle);
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1px; background: var(--border);
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
     }
-
-    .info-cell {
-      background: var(--surface);
-      padding: 14px 16px;
-    }
-
-    .info-cell-label {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-dim);
-      margin-bottom: 5px;
-    }
-
-    .info-cell-value {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
+    .info-cell { background: #fff; padding: 12px 14px; }
+    .info-cell-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 4px; }
+    .info-cell-value { font-size: 13px; font-weight: 700; color: var(--text); }
     .info-cell-value.forbidden { color: var(--red); }
+    .tips-section { padding: 12px 16px; }
+    .tip-row { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--text-muted); line-height: 1.55; font-weight: 500; }
+    .tip-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
 
-    /* Tips */
-    .tips-section {
-      padding: 14px 18px;
-    }
-
-    .tip-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      font-size: 13.5px;
-      color: var(--text-muted);
-      line-height: 1.55;
-    }
-
-    .tip-icon {
-      font-size: 14px;
-      margin-top: 1px;
-      flex-shrink: 0;
-    }
-
-    /* ═══════════════════════════════ MAP ═══════════════════════════════════ */
+    /* ── MAP ── */
     .map-wrapper {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      display: none;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+      display: none; box-shadow: var(--card-shadow);
     }
-
     .map-wrapper.visible { display: block; animation: slideUp 0.3s ease; }
-
     .map-header {
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
     }
-
-    .map-header-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .map-header-sub {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
+    .map-header-title { font-size: 14px; font-weight: 800; color: var(--text); }
+    .map-header-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
     .map-badge {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--green);
-      background: var(--green-bg);
-      border: 1px solid var(--green-dim);
-      padding: 4px 10px;
-      border-radius: 20px;
+      display: flex; align-items: center; gap: 5px; font-size: 11px;
+      font-weight: 700; color: var(--green); background: var(--green-light);
+      border: 1.5px solid #b8ddc8; padding: 4px 10px; border-radius: 20px;
     }
+    #map { width: 100%; height: 280px; z-index: 1; }
 
-    #map { width: 100%; height: 300px; z-index: 1; }
-
-    /* ═══════════════════════════════ PROFILE ═══════════════════════════════ */
+    /* ── PROFILE PAGE ── */
     .profile-card {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      position: relative;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px;
+      display: flex; align-items: center; gap: 14px;
+      position: relative; box-shadow: var(--card-shadow);
     }
-
     .avatar-wrap {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      background: var(--green-bg);
-      border: 2px solid var(--green-dim);
+      width: 60px; height: 60px; border-radius: 50%;
+      background: var(--green-light); border: 2.5px solid var(--green);
       display: flex; align-items: center; justify-content: center;
-      font-size: 30px;
-      flex-shrink: 0;
-      box-shadow: 0 0 16px rgba(63,185,80,0.2);
+      font-size: 28px; flex-shrink: 0;
     }
-
-    .profile-name-wrap { flex: 1; }
-    .profile-name { font-size: 18px; font-weight: 700; color: var(--text); }
-    .profile-username { font-size: 13px; color: var(--green); font-weight: 500; margin-top: 1px; }
-    .profile-level-str { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-    .profile-joined-str { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-
-    .logout-btn {
-      position: absolute;
-      top: 14px; right: 14px;
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 5px 10px;
-      font-size: 11px;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-family: 'Outfit', sans-serif;
-      font-weight: 600;
-      display: flex; align-items: center; gap: 4px;
-      transition: all 0.2s;
+    .profile-name-wrap { flex: 1; min-width: 0; }
+    .profile-name { font-size: 17px; font-weight: 800; color: var(--text); }
+    .profile-username { font-size: 12px; color: var(--green); font-weight: 700; margin-top: 2px; }
+    .profile-level-str { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 600; }
+    .profile-joined-str { font-size: 10px; color: var(--text-dim); margin-top: 1px; font-weight: 500; }
+    .auth-toggle-btn {
+      position: absolute; top: 12px; right: 12px;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 5px 10px;
+      font-size: 11px; color: var(--text-muted); cursor: pointer;
+      font-family: 'Montserrat', sans-serif; font-weight: 700;
+      transition: all 0.2s; display: flex; align-items: center; gap: 4px;
     }
-
-    .logout-btn:hover { border-color: var(--red); color: var(--red); }
-
-    /* Stats grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-
+    .auth-toggle-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
+    .auth-toggle-btn.logout:hover { border-color: var(--red); color: var(--red); }
+    .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
     .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
-      padding: 16px 12px;
-      text-align: center;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 14px 10px; text-align: center;
+      box-shadow: var(--card-shadow);
     }
-
-    .stat-value {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text);
-      line-height: 1;
-      margin-bottom: 5px;
-    }
-
-    .stat-label {
-      font-size: 11px;
-      color: var(--text-dim);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-
-    /* Section title */
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 2px 0;
-    }
-
-    .section-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      flex: 1;
-    }
-
-    /* History */
+    .stat-value { font-size: 24px; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 5px; }
+    .stat-label { font-size: 10px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+    .section-header { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+    .section-title { font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; flex: 1; }
     .history-list { display: flex; flex-direction: column; gap: 8px; }
-
     .history-item {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: border-color 0.2s;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: var(--card-shadow); transition: border-color 0.2s;
     }
-
-    .history-item:hover { border-color: var(--border); }
-
+    .history-item:hover { border-color: var(--green); }
     .history-icon {
-      width: 38px; height: 38px;
-      border-radius: 10px;
-      background: var(--green-bg);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--green-light); display: flex;
+      align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
     }
-
     .history-info { flex: 1; min-width: 0; }
-    .history-material { font-size: 14px; font-weight: 600; color: var(--text); }
-    .history-time { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
-
+    .history-material { font-size: 13px; font-weight: 700; color: var(--text); }
+    .history-time { font-size: 11px; color: var(--text-muted); margin-top: 1px; font-weight: 500; }
     .history-pts {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--green);
-      background: var(--green-bg);
-      border: 1px solid var(--green-dim);
-      padding: 3px 8px;
-      border-radius: 20px;
-      white-space: nowrap;
+      font-size: 12px; font-weight: 700; color: var(--green);
+      background: var(--green-light); border: 1.5px solid #b8ddc8;
+      padding: 3px 8px; border-radius: 20px; white-space: nowrap;
     }
-
-    .empty-state {
-      text-align: center;
-      padding: 36px 20px;
-      color: var(--text-dim);
-    }
-
+    .empty-state { text-align: center; padding: 32px 16px; color: var(--text-dim); }
     .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.5; }
-    .empty-state p { font-size: 14px; }
+    .empty-state p { font-size: 13px; font-weight: 600; }
 
-    /* ═══════════════════════════════ LEADERBOARD ════════════════════════════ */
-    .page-hero {
-      padding: 4px 0 2px;
+    /* ── COMMUNITY PAGE (leaderboard + rewards) ── */
+    .community-page-title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: var(--text); }
+    .community-page-sub { font-size: 13px; color: var(--text-muted); margin-top: 3px; font-weight: 500; }
+
+    /* Section divider */
+    .comm-section-label {
+      font-size: 11px; font-weight: 800; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 6px 0 4px;
     }
 
-    .page-hero-title {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: var(--text);
-    }
-
-    .page-hero-sub {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
+    /* Leaderboard */
     .leaderboard-list { display: flex; flex-direction: column; gap: 8px; }
-
     .lb-item {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
-      padding: 13px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: all 0.2s;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: var(--card-shadow); transition: all 0.2s;
     }
-
-    .lb-item:hover { border-color: var(--border); }
-
-    .lb-item.me {
-      border-color: var(--green-dim);
-      background: var(--green-bg);
-    }
-
-    .lb-rank {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-dim);
-      width: 24px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-
+    .lb-item:hover { border-color: #b8ddc8; }
+    .lb-item.me { border-color: var(--green); background: var(--green-light); }
+    .lb-rank { font-size: 13px; font-weight: 800; color: var(--text-dim); width: 22px; text-align: center; flex-shrink: 0; }
     .lb-rank.gold   { color: #e3b341; }
     .lb-rank.silver { color: #8b949e; }
     .lb-rank.bronze { color: #b87b4a; }
+    .lb-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--green-light); border: 1.5px solid #b8ddc8; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .lb-name { font-size: 13px; font-weight: 700; flex: 1; color: var(--text); }
+    .lb-me-tag { font-size: 9px; color: var(--green); font-weight: 800; margin-left: 6px; background: #fff; padding: 1px 6px; border-radius: 10px; border: 1px solid #b8ddc8; }
+    .lb-pts { font-size: 13px; font-weight: 700; color: var(--green); }
 
-    .lb-avatar {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      background: var(--surface2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
+    /* Rewards grid */
+    .rewards-hero-banner {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px solid #fde68a;
+      border-radius: var(--radius-lg); padding: 16px;
+      display: flex; align-items: center; gap: 14px;
     }
-
-    .lb-name { font-size: 14px; font-weight: 600; flex: 1; color: var(--text); }
-    .lb-me-tag { font-size: 10px; color: var(--green); font-weight: 700; margin-left: 6px; background: var(--green-bg); padding: 1px 6px; border-radius: 10px; }
-
-    .lb-pts {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    /* ═══════════════════════════════ REWARDS ═══════════════════════════════ */
-    .rewards-hero {
-      background: linear-gradient(135deg, #1c2330, #1a2040);
-      border: 1px solid rgba(232,168,48,0.2);
-      border-radius: var(--radius-lg);
-      padding: 18px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .rewards-hero::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--amber), transparent);
-      opacity: 0.5;
-    }
-
-    .rewards-hero-icon { font-size: 36px; flex-shrink: 0; }
-
-    .rewards-hero-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .rewards-hero-sub {
-      font-size: 13px;
-      color: var(--amber);
-      margin-top: 3px;
-      font-weight: 500;
-    }
-
-    .rewards-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
+    .rewards-hero-icon { font-size: 34px; flex-shrink: 0; }
+    .rewards-hero-title { font-size: 15px; font-weight: 800; color: var(--text); }
+    .rewards-hero-sub { font-size: 12px; color: var(--amber); margin-top: 3px; font-weight: 600; }
+    .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .reward-card {
-      background: var(--surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
-      padding: 18px 14px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.2s;
+      background: #fff; border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 16px 12px; text-align: center;
+      position: relative; overflow: hidden; transition: all 0.2s;
+      box-shadow: var(--card-shadow);
     }
-
-    .reward-card:hover { border-color: var(--border); }
-    .reward-card.locked { opacity: 0.5; }
-
-    .reward-emoji { font-size: 32px; margin-bottom: 10px; }
-    .reward-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-    .reward-desc { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4; }
-
+    .reward-card:hover { border-color: #b8ddc8; box-shadow: var(--card-shadow-hover); }
+    .reward-card.locked { opacity: 0.6; }
+    .reward-emoji { font-size: 30px; margin-bottom: 8px; }
+    .reward-name { font-size: 12px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+    .reward-desc { font-size: 10px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4; font-weight: 500; }
     .reward-cost {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: var(--amber-bg);
-      color: var(--amber);
-      border: 1px solid rgba(210,153,34,0.2);
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px;
+      background: #fff8e1; color: var(--amber); border: 1.5px solid #fde68a;
+    }
+    .reward-cost.available { background: var(--green-light); color: var(--green); border-color: #b8ddc8; }
+    .reward-lock { position: absolute; top: 8px; right: 10px; font-size: 13px; opacity: 0.5; }
+    .coming-soon {
+      display: inline-block; background: var(--bg); color: var(--text-dim);
+      font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 20px; margin-top: 5px;
     }
 
-    .reward-cost.available {
-      background: var(--green-bg);
-      color: var(--green);
-      border-color: var(--green-dim);
-    }
-
-    .reward-lock {
-      position: absolute;
-      top: 8px; right: 10px;
-      font-size: 13px;
-      opacity: 0.5;
-    }
-
-    .coming-soon-badge {
-      display: inline-block;
-      background: var(--surface2);
-      color: var(--text-dim);
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      padding: 3px 8px;
-      border-radius: 20px;
-      margin-top: 6px;
-    }
-
-    /* ═══════════════════════════════ TOAST ═════════════════════════════════ */
+    /* ── TOAST ── */
     .points-toast {
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
+      position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
       transform: translateX(-50%) translateY(60px);
-      background: var(--surface2);
-      border: 1px solid var(--green-dim);
-      color: var(--green);
-      padding: 10px 18px;
-      border-radius: 99px;
-      font-size: 14px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      z-index: 999;
-      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
-      opacity: 0;
-      white-space: nowrap;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      background: var(--green); color: #fff;
+      padding: 10px 18px; border-radius: 99px;
+      font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; gap: 7px;
+      z-index: 999; transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+      opacity: 0; white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(1,114,53,0.4);
     }
+    .points-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-    .points-toast.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-    }
-
-    /* ═══════════════════════════════ LEVEL UP ══════════════════════════════ */
+    /* ── LEVEL UP OVERLAY ── */
     .levelup-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      z-index: 200;
-      display: none;
-      align-items: center;
-      justify-content: center;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 300; display: none; align-items: center; justify-content: center;
       backdrop-filter: blur(6px);
     }
-
-    .levelup-overlay.show {
-      display: flex;
-      animation: fadeIn 0.25s ease;
-    }
-
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
+    .levelup-overlay.show { display: flex; animation: fadeInOv 0.25s ease; }
+    @keyframes fadeInOv { from{opacity:0} to{opacity:1} }
     .levelup-card {
-      background: var(--surface);
-      border: 1px solid var(--green-dim);
-      border-radius: var(--radius-xl);
-      padding: 40px 32px;
-      text-align: center;
-      max-width: 300px;
-      width: 90%;
-      animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1);
-      position: relative;
-      overflow: hidden;
+      background: #fff; border: 2px solid var(--green);
+      border-radius: var(--radius-xl); padding: 36px 28px;
+      text-align: center; max-width: 300px; width: 90%;
+      animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1); position: relative;
     }
-
-    .levelup-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--green), transparent);
-    }
-
-    @keyframes popIn {
-      from { transform: scale(0.7); opacity: 0; }
-      to   { transform: scale(1); opacity: 1; }
-    }
-
-    .levelup-emoji { font-size: 56px; margin-bottom: 14px; }
-    .levelup-label { font-size: 11px; color: var(--green); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    .levelup-name { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); margin-bottom: 8px; }
-    .levelup-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
-
+    @keyframes popIn { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+    .levelup-emoji { font-size: 56px; margin-bottom: 12px; }
+    .levelup-label { font-size: 11px; color: var(--green); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .levelup-name { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; color: var(--text); margin-bottom: 8px; }
+    .levelup-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; font-weight: 500; }
     .levelup-btn {
-      background: var(--green);
-      color: #0d1117;
-      border: none;
-      padding: 13px 32px;
-      border-radius: var(--radius);
-      font-family: 'Outfit', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: opacity 0.2s;
+      background: var(--green); color: #fff; border: none;
+      padding: 13px 32px; border-radius: var(--radius-sm);
+      font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.2s;
     }
+    .levelup-btn:hover { opacity: 0.88; }
 
-    .levelup-btn:hover { opacity: 0.85; }
-
-    /* ═══════════════════════════════ FOOTER ═══════════════════════════════ */
-    footer {
-      display: none; /* hidden — replaced by bottom nav */
-    }
-
-    /* ═══════════════════════════════ ADMIN ════════════════════════════════ */
+    /* ── ADMIN ── */
     #admin-panel-btn-wrap .admin-btn {
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, #161b22, var(--green-dim));
-      color: var(--text);
-      border: 1px solid var(--green-dim);
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 600;
-      font-family: 'Outfit', sans-serif;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, var(--green-light), #c8e6d0);
+      color: var(--green); border: 1.5px solid #b8ddc8;
+      border-radius: var(--radius-sm); font-size: 14px; font-weight: 700;
+      font-family: 'Montserrat', sans-serif; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
       transition: opacity 0.2s;
     }
-
     #admin-panel-btn-wrap .admin-btn:hover { opacity: 0.85; }
 
-    /* ═══════════════════════════════ LEAFLET DARK ══════════════════════════ */
-    .leaflet-container { background: #1a1f27 !important; }
-    .leaflet-tile { filter: brightness(0.7) saturate(0.8); }
-
-    /* ═══════════════════════════════ RESPONSIVE ═══════════════════════════ */
-    @media (max-width: 400px) {
-      .hero-title { font-size: 22px; }
-      .btn { padding: 13px 12px; font-size: 13px; }
-      .rewards-grid { grid-template-columns: 1fr 1fr; }
-      .stats-grid { gap: 8px; }
-    }
+    /* ── LEAFLET ── */
+    .leaflet-container { background: #e8f0e8 !important; }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="header-inner">
-      <div class="logo">
-        <div class="logo-leaf">🌿</div>
-        Eco<span>Sen</span>
-      </div>
-      <button id="lang-toggle-btn" class="lang-btn" onclick="toggleLang()">РУС</button>
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="header-inner">
+    <div class="logo" id="logo-btn">
+      <img src="img/logo.png" alt="EcoSen"/>
+      <span class="logo-text">EcoSen</span>
     </div>
-  </header>
+    <button class="burger-btn" id="burger-btn" aria-label="Меню">
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </button>
+  </div>
+</header>
 
-  <main>
-
-    <!-- ── SCAN PAGE ── -->
-    <div class="page active" id="scan-page">
-
-      <!-- Level banner -->
-      <div class="level-banner">
-        <div class="level-xp-circle">
-          <div class="level-xp-circle-inner">
-            <span class="level-xp-num" id="banner-pts">0</span>
-            <span class="level-xp-label">pts</span>
-          </div>
-        </div>
-        <div class="level-info">
-          <div class="level-name" id="banner-level-name">Новичок</div>
-          <div class="level-progress-track">
-            <div class="level-progress-fill" id="banner-bar" style="width:0%"></div>
-          </div>
-          <div class="level-next-label" id="banner-level-next">0 / 10</div>
-        </div>
-      </div>
-
-      <!-- Hero -->
-      <div class="hero-block">
-        <h1 class="hero-title" data-i18n="title">Определи <em>мусор</em> за 2 сек</h1>
-        <p class="hero-sub" data-i18n="subtitle">Сфотографируй — узнай тип и куда сдать в Актау</p>
-      </div>
-
-      <!-- Upload + Analyze -->
-      <div class="upload-card">
-        <label for="image-upload" class="upload-zone" id="upload-zone">
-          <img id="uploaded-image" src="" alt="" />
-          <div class="upload-placeholder" id="upload-placeholder">
-            <div class="upload-icon-wrap">📷</div>
-            <div class="upload-placeholder-text">
-              <p data-i18n="upload_cta">Нажми, чтобы выбрать фото</p>
-              <span data-i18n="upload_hint">JPG, PNG, WebP · или сделай снимок</span>
-            </div>
-          </div>
-        </label>
-        <input type="file" id="image-upload" accept="image/*" capture="environment">
-
-        <div id="model-status"></div>
-
-        <div class="btn-row">
-          <button class="btn btn-primary" id="btn-analyze">
-            <span>🔍</span>
-            <span data-i18n="btn_analyze">Определить</span>
-          </button>
-          <button class="btn btn-secondary" id="btn-map">
-            <span>📍</span>
-            <span data-i18n="btn_map">Пункты сдачи</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Loading -->
-      <div class="loading-card" id="loading-card">
-        <div class="spinner"></div>
-        <span data-i18n="analyzing">Анализируем...</span>
-      </div>
-
-      <!-- Result -->
-      <div class="report-card" id="report-card">
-        <div class="report-top-stripe"></div>
-        <div class="report-header">
-          <div class="report-icon-wrap" id="report-icon">♻️</div>
-          <div class="report-header-text">
-            <div class="report-title" id="report-title">—</div>
-            <div class="report-sub" id="report-sub" data-i18n="report_sub">Определённый материал</div>
-          </div>
-          <div class="confidence-pill" id="confidence-badge">—</div>
-        </div>
-
-        <div class="confidence-section">
-          <div class="bar-label-row">
-            <span class="bar-label" data-i18n="confidence_label">Уверенность</span>
-          </div>
-          <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
-        </div>
-
-        <div class="info-grid">
-          <div class="info-cell">
-            <div class="info-cell-label" data-i18n="label_bin">Контейнер</div>
-            <div class="info-cell-value" id="info-bin">—</div>
-          </div>
-          <div class="info-cell">
-            <div class="info-cell-label" data-i18n="label_forbidden">Запрещено</div>
-            <div class="info-cell-value forbidden" id="info-forbidden">—</div>
-          </div>
-        </div>
-
-        <div class="tips-section">
-          <div class="tip-row">
-            <span class="tip-icon">💡</span>
-            <span id="info-tip">—</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Map -->
-      <div class="map-wrapper" id="map-wrapper">
-        <div class="map-header">
-          <div>
-            <div class="map-header-title" id="map-title-label">Пункты приёма в Актау</div>
-            <div class="map-header-sub" id="map-sub-label">7 верифицированных пунктов</div>
-          </div>
-          <div class="map-badge">
-            <span>📍</span>
-            <span>7</span>
-          </div>
-        </div>
-        <div id="map"></div>
-      </div>
-
+<!-- ═══════════════ BURGER DRAWER ═══════════════ -->
+<div class="menu-overlay" id="menu-overlay"></div>
+<div class="menu-drawer" id="menu-drawer">
+  <div class="drawer-user">
+    <div class="drawer-avatar" id="drawer-avatar">🌱</div>
+    <div>
+      <div class="drawer-user-name" id="drawer-name">EcoSen</div>
+      <div class="drawer-user-pts" id="drawer-pts">0 баллов</div>
     </div>
-
-    <!-- ── PROFILE PAGE ── -->
-    <div class="page" id="profile-page">
-
-      <div class="profile-card">
-        <div class="avatar-wrap" id="profile-avatar">🌱</div>
-        <div class="profile-name-wrap">
-          <div class="profile-name" id="profile-name-display">EcoUser</div>
-          <div class="profile-username" id="profile-username-display"></div>
-          <div class="profile-level-str" id="profile-level-display">Уровень 1 · Новичок</div>
-          <div class="profile-joined-str" id="profile-joined">Сегодня</div>
-        </div>
-        <button class="logout-btn" id="profile-auth-btn" onclick="handleProfileAuthBtn()">🚪 Выйти</button>
-      </div>
-
-      <div id="admin-panel-btn-wrap" style="display:none;">
-        <button class="admin-btn" onclick="showAdminPanel()">⚙️ Панель администратора</button>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-pts">0</div>
-          <div class="stat-label" data-i18n="stat_pts">Баллов</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-scans">0</div>
-          <div class="stat-label" data-i18n="stat_scans">Сданий</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-level">1</div>
-          <div class="stat-label" data-i18n="stat_level">Уровень</div>
-        </div>
-      </div>
-
-      <div class="section-header">
-        <div class="section-title" data-i18n="history_title">История сдачи</div>
-      </div>
-
-      <div class="history-list" id="history-list">
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <p data-i18n="history_empty">Пока нет сданий</p>
-        </div>
-      </div>
+  </div>
+  <nav class="drawer-nav">
+    <div class="drawer-item active" data-page="home-page">
+      <span class="drawer-item-icon">🏠</span>
+      <span data-i18n="menu_home">Главная</span>
     </div>
-
-    <!-- ── LEADERBOARD PAGE ── -->
-    <div class="page" id="leaderboard-page">
-      <div class="page-hero">
-        <div class="page-hero-title" data-i18n="lb_title">Рейтинг</div>
-        <div class="page-hero-sub" data-i18n="lb_sub">Топ эко-сканеров города</div>
-      </div>
-      <div class="leaderboard-list" id="leaderboard-list"></div>
+    <div class="drawer-item" data-page="scan-page">
+      <span class="drawer-item-icon">📷</span>
+      <span data-i18n="tab_scan">Скан</span>
     </div>
-
-    <!-- ── REWARDS PAGE ── -->
-    <div class="page" id="rewards-page">
-      <div class="rewards-hero">
-        <div class="rewards-hero-icon">🎁</div>
-        <div>
-          <div class="rewards-hero-title" data-i18n="rewards_title">Магазин наград</div>
-          <div class="rewards-hero-sub" id="rewards-pts-label">Доступно: 0 pts</div>
-        </div>
-      </div>
-      <div class="rewards-grid" id="rewards-grid"></div>
-      <div style="text-align:center; font-size:12px; color:var(--text-dim); padding:6px 0 2px;" data-i18n="rewards_note">
-        Копите баллы — скоро появятся реальные призы!
-      </div>
+    <div class="drawer-item" data-page="profile-page">
+      <span class="drawer-item-icon">👤</span>
+      <span data-i18n="tab_profile">Профиль</span>
     </div>
-
-  </main>
-
-  <!-- Bottom nav (replaces top tabs) -->
-  <nav class="bottom-nav">
-    <div class="bottom-nav-inner">
-      <button class="nav-item active" data-page="scan-page">
-        <span class="nav-icon">📷</span>
-        <span class="nav-label" data-i18n="tab_scan">Скан</span>
-      </button>
-      <button class="nav-item" data-page="profile-page">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label" data-i18n="tab_profile">Профиль</span>
-      </button>
-      <button class="nav-item" data-page="leaderboard-page">
-        <span class="nav-icon">🏆</span>
-        <span class="nav-label" data-i18n="tab_leaders">Рейтинг</span>
-      </button>
-      <button class="nav-item" data-page="rewards-page">
-        <span class="nav-icon">🎁</span>
-        <span class="nav-label" data-i18n="tab_rewards">Награды</span>
-      </button>
+    <div class="drawer-item" data-page="community-page">
+      <span class="drawer-item-icon">🏆</span>
+      <span data-i18n="tab_community">Рейтинг и Награды</span>
     </div>
   </nav>
+  <div class="drawer-divider"></div>
+  <div class="drawer-footer">
+    <div class="drawer-lang-row">
+      <span class="drawer-lang-label">Язык / Тіл</span>
+      <div class="lang-toggle">
+        <div class="lang-opt" id="lang-kk" onclick="setLang('kk')">ҚАЗ</div>
+        <div class="lang-opt active" id="lang-ru" onclick="setLang('ru')">РУС</div>
+      </div>
+    </div>
+    <button class="drawer-auth-btn" id="drawer-auth-btn" onclick="handleDrawerAuth()">🔑 Войти</button>
+  </div>
+</div>
 
-  <!-- Toast -->
-  <div class="points-toast" id="points-toast">
-    <span>⭐</span>
-    <span id="toast-text">+10 баллов</span>
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main>
+
+  <!-- ── HOME PAGE ── -->
+  <div class="page active" id="home-page">
+
+    <!-- SECTION 1: Hero -->
+    <div class="hero-section">
+      <div class="hero-bg"></div>
+      <div class="hero-content">
+        <p class="hero-title">Превращай отходы в <span>бонусы</span></p>
+        <p class="hero-sub">ИИ поможет распознать отходы — сдавай и получай вознаграждение.</p>
+        <div class="hero-btns">
+          <button class="btn-green" onclick="goTo('scan-page')">📷 Войти в скан</button>
+          <button class="btn-outline" id="hero-auth-btn" onclick="handleHeroAuth()">🔑 ИИ компонент</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Rewards slider -->
+    <div class="home-section">
+      <p class="section-eyebrow">МАГАЗИН НАГРАЖДЕНИЙ</p>
+      <p class="section-heading">Обменивай баллы на призы</p>
+      <div class="rewards-slider">
+        <div class="reward-card-home" onclick="goTo('community-page')">
+          <img src="img/image 2.png" alt="Айон 16"/>
+          <p>Айон 16</p>
+          <span>500 000 баллов</span>
+        </div>
+        <div class="reward-card-home" onclick="goTo('community-page')">
+          <img src="img/image 1.png" alt="Кофе"/>
+          <p>Кофе</p>
+          <span>800 баллов</span>
+        </div>
+        <div class="reward-card-home" onclick="goTo('community-page')">
+          <div class="rc-emoji">🛍️</div>
+          <p>Эко-сумка</p>
+          <span>1 200 баллов</span>
+        </div>
+        <div class="reward-card-home" onclick="goTo('community-page')">
+          <div class="rc-emoji">🌳</div>
+          <p>Посадить дерево</p>
+          <span>300 баллов</span>
+        </div>
+        <div class="reward-card-home reward-more-card" onclick="goTo('community-page')">
+          <div class="rc-emoji">→</div>
+          <p>Больше подарков</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: How it works -->
+    <div class="home-section" style="padding-top:0">
+      <p class="section-eyebrow">КАК ЭТО РАБОТАЕТ</p>
+      <p class="section-heading">Просто и выгодно</p>
+      <div class="steps-carousel-wrap">
+        <div class="steps-carousel">
+          <div class="steps-track" id="steps-track">
+            <div class="step-card-home">
+              <div class="step-num-badge">1</div>
+              <div class="step-icon-home">♻️</div>
+              <p class="step-title-home">Соберите отходы</p>
+              <span class="step-desc-home">Подготовьте дома — пластик, бумагу, стекло, металл</span>
+            </div>
+            <div class="step-card-home">
+              <div class="step-num-badge">2</div>
+              <div class="step-icon-home">📷</div>
+              <p class="step-title-home">Определите тип</p>
+              <span class="step-desc-home">ИИ подскажет тип материала за 2 секунды</span>
+            </div>
+            <div class="step-card-home">
+              <div class="step-num-badge">3</div>
+              <div class="step-icon-home">📍</div>
+              <p class="step-title-home">Найдите пункт</p>
+              <span class="step-desc-home">Ближайший пункт приёма рядом с вами</span>
+            </div>
+            <div class="step-card-home">
+              <div class="step-num-badge">4</div>
+              <div class="step-icon-home">🎁</div>
+              <p class="step-title-home">Сдайте и получите</p>
+              <span class="step-desc-home">Баллы зачисляются сразу — тратьте на призы</span>
+            </div>
+          </div>
+        </div>
+        <div class="carousel-dots" id="carousel-dots">
+          <button class="carousel-dot active" data-idx="0"></button>
+          <button class="carousel-dot" data-idx="1"></button>
+          <button class="carousel-dot" data-idx="2"></button>
+          <button class="carousel-dot" data-idx="3"></button>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 8px;"></div>
   </div>
 
-  <!-- Level up overlay -->
-  <div class="levelup-overlay" id="levelup-overlay">
-    <div class="levelup-card">
-      <div class="levelup-emoji" id="lu-emoji">🏆</div>
-      <div class="levelup-label" data-i18n="levelup_label">Новый уровень!</div>
-      <div class="levelup-name" id="lu-name">Эко-воин</div>
-      <div class="levelup-sub" id="lu-sub">Вы набрали 10 баллов</div>
-      <button class="levelup-btn" id="lu-close" data-i18n="levelup_btn">Продолжить</button>
+  <!-- ── SCAN PAGE ── -->
+  <div class="page" id="scan-page">
+
+    <!-- Level banner -->
+    <div class="level-banner">
+      <div class="level-xp-circle">
+        <span class="level-xp-num" id="banner-pts">0</span>
+        <span class="level-xp-label">pts</span>
+      </div>
+      <div class="level-info">
+        <div class="level-name" id="banner-level-name">Новичок</div>
+        <div class="level-progress-track">
+          <div class="level-progress-fill" id="banner-bar" style="width:0%"></div>
+        </div>
+        <div class="level-next-label" id="banner-level-next">0 / 10</div>
+      </div>
+    </div>
+
+    <div class="page-hero">
+      <h1 class="page-title" data-i18n="title">Определи <em>мусор</em> за 2 сек</h1>
+      <p class="page-sub" data-i18n="subtitle">Сфотографируй — узнай тип и куда сдать в Актау</p>
+    </div>
+
+    <div class="upload-card">
+      <label for="image-upload" class="upload-zone" id="upload-zone">
+        <img id="uploaded-image" src="" alt=""/>
+        <div class="upload-placeholder" id="upload-placeholder">
+          <div class="upload-icon-wrap">📷</div>
+          <p data-i18n="upload_cta">Нажми, чтобы выбрать фото</p>
+          <span data-i18n="upload_hint">JPG, PNG, WebP · или сделай снимок</span>
+        </div>
+      </label>
+      <input type="file" id="image-upload" accept="image/*" capture="environment"/>
+      <div id="model-status"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-analyze">
+          <span>🔍</span><span data-i18n="btn_analyze">Определить</span>
+        </button>
+        <button class="btn btn-secondary" id="btn-map">
+          <span>📍</span><span data-i18n="btn_map">Пункты сдачи</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="loading-card" id="loading-card">
+      <div class="spinner"></div>
+      <span data-i18n="analyzing">Анализируем...</span>
+    </div>
+
+    <div class="report-card" id="report-card">
+      <div class="report-top-stripe"></div>
+      <div class="report-header">
+        <div class="report-icon-wrap" id="report-icon">♻️</div>
+        <div class="report-header-text">
+          <div class="report-title" id="report-title">—</div>
+          <div class="report-sub" id="report-sub" data-i18n="report_sub">Определённый материал</div>
+        </div>
+        <div class="confidence-pill" id="confidence-badge">—</div>
+      </div>
+      <div class="confidence-section">
+        <span class="bar-label" data-i18n="confidence_label">Уверенность</span>
+        <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
+      </div>
+      <div class="info-grid">
+        <div class="info-cell">
+          <div class="info-cell-label" data-i18n="label_bin">Контейнер</div>
+          <div class="info-cell-value" id="info-bin">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label" data-i18n="label_forbidden">Запрещено</div>
+          <div class="info-cell-value forbidden" id="info-forbidden">—</div>
+        </div>
+      </div>
+      <div class="tips-section">
+        <div class="tip-row"><span class="tip-icon">💡</span><span id="info-tip">—</span></div>
+      </div>
+    </div>
+
+    <div class="map-wrapper" id="map-wrapper">
+      <div class="map-header">
+        <div>
+          <div class="map-header-title" id="map-title-label">Пункты приёма в Актау</div>
+          <div class="map-header-sub" id="map-sub-label">7 верифицированных пунктов</div>
+        </div>
+        <div class="map-badge"><span>📍</span><span>7</span></div>
+      </div>
+      <div id="map"></div>
     </div>
   </div>
 
-  <footer>
-    <span>© 2026 EcoSen</span>
-  </footer>
+  <!-- ── PROFILE PAGE ── -->
+  <div class="page" id="profile-page">
+    <div class="profile-card">
+      <div class="avatar-wrap" id="profile-avatar">🌱</div>
+      <div class="profile-name-wrap">
+        <div class="profile-name" id="profile-name-display">EcoUser</div>
+        <div class="profile-username" id="profile-username-display"></div>
+        <div class="profile-level-str" id="profile-level-display">Уровень 1 · Новичок</div>
+        <div class="profile-joined-str" id="profile-joined">Сегодня</div>
+      </div>
+      <button class="auth-toggle-btn" id="profile-auth-btn" onclick="handleProfileAuthBtn()">🔑 Войти</button>
+    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
- 
-  <script>
-    // ─── i18n ────────────────────────────────────────────────────────────────
-    const translations = {
-      kk: {
-        title: "Қоқысты анықтау",
-        subtitle: "Суретті жүктеңіз — модель материалды анықтайды",
-        upload_cta: "Суретті таңдау",
-        upload_hint: "JPG, PNG, WebP",
-        btn_analyze: "Анықтау",
-        btn_map: "Жинау нүктелері",
-        analyzing: "Талдау жүріп жатыр...",
-        report_sub: "Анықталған материал",
-        confidence_label: "Сенімділік",
-        label_bin: "Контейнер",
-        label_forbidden: "Тыйым",
-        no_image: "Алдымен суретті таңдаңыз",
-        not_detected: "Материал анықталмады",
-        tab_scan: "Скан",
-        tab_profile: "Профиль",
-        tab_leaders: "Рейтинг",
-        tab_rewards: "Сыйлықтар",
-        stat_pts: "Балл",
-        stat_scans: "Скан",
-        stat_level: "Деңгей",
-        history_title: "Сканерлеу тарихы",
-        history_empty: "Әзірге сканерлеу жоқ",
-        lb_title: "Рейтинг",
-        lb_sub: "Қаланың үздік эко-сканерлері",
-        rewards_title: "Сыйлық дүкені",
-        rewards_note: "Жинаңыз, ал жақын арада нақты сыйлықтар пайда болады!",
-        levelup_label: "Жаңа деңгей!",
-        levelup_btn: "Жалғастыру",
-        toast_earned: "балл жиналды",
-      },
-      ru: {
-        title: "Определение мусора",
-        subtitle: "Загрузите фото — модель определит материал",
-        upload_cta: "Выбрать изображение",
-        upload_hint: "JPG, PNG, WebP",
-        btn_analyze: "Определить",
-        btn_map: "Пункты сдачи",
-        analyzing: "Анализ...",
-        report_sub: "Определённый материал",
-        confidence_label: "Уверенность",
-        label_bin: "Контейнер",
-        label_forbidden: "Запрещено",
-        no_image: "Сначала выберите изображение",
-        not_detected: "Материал не определён",
-        tab_scan: "Скан",
-        tab_profile: "Профиль",
-        tab_leaders: "Рейтинг",
-        tab_rewards: "Награды",
-        stat_pts: "Баллов",
-        stat_scans: "Сканов",
-        stat_level: "Уровень",
-        history_title: "История сканирований",
-        history_empty: "Пока нет сканирований",
-        lb_title: "Рейтинг",
-        lb_sub: "Топ эко-сканеров города",
-        rewards_title: "Магазин наград",
-        rewards_note: "Копите баллы — скоро появятся реальные призы!",
-        levelup_label: "Новый уровень!",
-        levelup_btn: "Продолжить",
-        toast_earned: "баллов получено",
-      }
-    };
- 
-    let currentLang = 'kk'; // kk or ru only
-    function t(key) { return translations[currentLang][key] || translations['kk'][key] || key; }
-    function applyLang() {
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        el.textContent = t(el.getAttribute('data-i18n'));
+    <div id="admin-panel-btn-wrap" style="display:none;">
+      <button class="admin-btn" onclick="showAdminPanel()">⚙️ Панель администратора</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-pts">0</div>
+        <div class="stat-label" data-i18n="stat_pts">Баллов</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-scans">0</div>
+        <div class="stat-label" data-i18n="stat_scans">Сданий</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-level">1</div>
+        <div class="stat-label" data-i18n="stat_level">Уровень</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title" data-i18n="history_title">История сдачи</div>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="empty-state"><div class="empty-icon">📭</div><p data-i18n="history_empty">Пока нет сданий</p></div>
+    </div>
+  </div>
+
+  <!-- ── COMMUNITY PAGE (leaderboard + rewards together) ── -->
+  <div class="page" id="community-page">
+
+    <div class="page-hero">
+      <div class="community-page-title" data-i18n="lb_title">Рейтинг</div>
+      <div class="community-page-sub" data-i18n="lb_sub">Топ эко-сканеров Актау</div>
+    </div>
+
+    <!-- Leaderboard first -->
+    <div class="leaderboard-list" id="leaderboard-list"></div>
+
+    <!-- Rewards below -->
+    <div class="comm-section-label" data-i18n="rewards_title">Магазин наград</div>
+
+    <div class="rewards-hero-banner">
+      <div class="rewards-hero-icon">🎁</div>
+      <div>
+        <div class="rewards-hero-title" data-i18n="rewards_title">Магазин наград</div>
+        <div class="rewards-hero-sub" id="rewards-pts-label">Доступно: 0 pts</div>
+      </div>
+    </div>
+
+    <div class="rewards-grid" id="rewards-grid"></div>
+
+    <div style="text-align:center;font-size:11px;color:var(--text-dim);padding:4px 0;font-weight:600;" data-i18n="rewards_note">
+      Копите баллы — скоро появятся реальные призы!
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════ BOTTOM NAV ═══════════════ -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="nav-item active" data-page="home-page">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label" data-i18n="menu_home">Главная</span>
+    </button>
+    <button class="nav-item" data-page="scan-page">
+      <span class="nav-icon">📷</span>
+      <span class="nav-label" data-i18n="tab_scan">Скан</span>
+    </button>
+    <button class="nav-item" data-page="profile-page">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label" data-i18n="tab_profile">Профиль</span>
+    </button>
+    <button class="nav-item" data-page="community-page">
+      <span class="nav-icon">🏆</span>
+      <span class="nav-label" data-i18n="tab_community">Рейтинг</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Toast -->
+<div class="points-toast" id="points-toast">
+  <span>⭐</span><span id="toast-text">+10 баллов</span>
+</div>
+
+<!-- Level up overlay -->
+<div class="levelup-overlay" id="levelup-overlay">
+  <div class="levelup-card">
+    <div class="levelup-emoji" id="lu-emoji">🏆</div>
+    <div class="levelup-label" data-i18n="levelup_label">Новый уровень!</div>
+    <div class="levelup-name" id="lu-name">Эко-воин</div>
+    <div class="levelup-sub" id="lu-sub">Вы набрали 10 баллов</div>
+    <button class="levelup-btn" id="lu-close" data-i18n="levelup_btn">Продолжить</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+'use strict';
+
+/* ════════════════════════════════════════
+   i18n
+════════════════════════════════════════ */
+const T = {
+  kk: {
+    menu_home:'Басты бет', title:'Қоқысты анықтау', subtitle:'Суретті жүктеңіз — модель материалды анықтайды',
+    upload_cta:'Суретті таңдау', upload_hint:'JPG, PNG, WebP', btn_analyze:'Анықтау', btn_map:'Жинау нүктелері',
+    analyzing:'Талдау жүріп жатыр...', report_sub:'Анықталған материал', confidence_label:'Сенімділік',
+    label_bin:'Контейнер', label_forbidden:'Тыйым', no_image:'Алдымен суретті таңдаңыз',
+    not_detected:'Материал анықталмады', tab_scan:'Скан', tab_profile:'Профиль',
+    tab_community:'Рейтинг', stat_pts:'Балл', stat_scans:'Скан', stat_level:'Деңгей',
+    history_title:'Сканерлеу тарихы', history_empty:'Әзірге сканерлеу жоқ',
+    lb_title:'Рейтинг', lb_sub:'Қаланың үздік эко-сканерлері', rewards_title:'Сыйлық дүкені',
+    rewards_note:'Жинаңыз, жақын арада нақты сыйлықтар пайда болады!',
+    levelup_label:'Жаңа деңгей!', levelup_btn:'Жалғастыру', toast_earned:'балл жиналды',
+  },
+  ru: {
+    menu_home:'Главная', title:'Определи мусор за 2 сек', subtitle:'Сфотографируй — узнай тип и куда сдать в Актау',
+    upload_cta:'Нажми, чтобы выбрать фото', upload_hint:'JPG, PNG, WebP · или сделай снимок',
+    btn_analyze:'Определить', btn_map:'Пункты сдачи', analyzing:'Анализируем...',
+    report_sub:'Определённый материал', confidence_label:'Уверенность',
+    label_bin:'Контейнер', label_forbidden:'Запрещено', no_image:'Сначала выберите изображение',
+    not_detected:'Материал не определён', tab_scan:'Скан', tab_profile:'Профиль',
+    tab_community:'Рейтинг', stat_pts:'Баллов', stat_scans:'Сданий', stat_level:'Уровень',
+    history_title:'История сдачи', history_empty:'Пока нет сданий',
+    lb_title:'Рейтинг', lb_sub:'Топ эко-сканеров Актау', rewards_title:'Магазин наград',
+    rewards_note:'Копите баллы — скоро появятся реальные призы!',
+    levelup_label:'Новый уровень!', levelup_btn:'Продолжить', toast_earned:'баллов получено',
+  }
+};
+let currentLang = 'ru';
+function t(k){ return T[currentLang][k] || T.ru[k] || k; }
+function setLang(lang){
+  currentLang = lang;
+  document.getElementById('lang-kk').classList.toggle('active', lang==='kk');
+  document.getElementById('lang-ru').classList.toggle('active', lang==='ru');
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  const mapTitle = document.getElementById('map-title-label');
+  if(mapTitle) mapTitle.textContent = lang==='kk' ? 'Актаудағы қабылдау пункттері' : 'Пункты приёма в Актау';
+  const mapSub = document.getElementById('map-sub-label');
+  if(mapSub) mapSub.textContent = lang==='kk' ? '7 расталған пункт' : '7 верифицированных пунктов';
+  renderLeaderboard(); renderRewards(); updateBanner(); updateProfile(); updateDrawer();
+}
+
+/* ════════════════════════════════════════
+   BURGER MENU
+════════════════════════════════════════ */
+const burgerBtn  = document.getElementById('burger-btn');
+const menuDrawer = document.getElementById('menu-drawer');
+const menuOverlay= document.getElementById('menu-overlay');
+
+function openMenu(){ burgerBtn.classList.add('open'); menuDrawer.classList.add('open'); menuOverlay.classList.add('open'); document.body.style.overflow='hidden'; }
+function closeMenu(){ burgerBtn.classList.remove('open'); menuDrawer.classList.remove('open'); menuOverlay.classList.remove('open'); document.body.style.overflow=''; }
+burgerBtn.addEventListener('click', ()=> menuDrawer.classList.contains('open') ? closeMenu() : openMenu());
+menuOverlay.addEventListener('click', closeMenu);
+
+document.querySelectorAll('.drawer-item').forEach(item => {
+  item.addEventListener('click', ()=>{ if(item.dataset.page){ goTo(item.dataset.page); closeMenu(); } });
+});
+
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function goTo(pageId){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pg = document.getElementById(pageId);
+  if(pg) pg.classList.add('active');
+
+  // bottom nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+  if(nav) nav.classList.add('active');
+
+  // drawer
+  document.querySelectorAll('.drawer-item').forEach(n => n.classList.remove('active'));
+  const di = document.querySelector(`.drawer-item[data-page="${pageId}"]`);
+  if(di) di.classList.add('active');
+
+  if(pageId==='profile-page'){ updateProfile(); loadHistoryFromServer(); }
+  if(pageId==='community-page'){ renderLeaderboardFromServer(); renderRewards(); }
+  window.scrollTo(0,0);
+}
+
+document.querySelectorAll('.nav-item').forEach(tab =>
+  tab.addEventListener('click', ()=> goTo(tab.dataset.page))
+);
+document.getElementById('logo-btn').addEventListener('click', ()=>{ goTo('home-page'); closeMenu(); });
+
+/* ════════════════════════════════════════
+   STEPS CAROUSEL (home page)
+════════════════════════════════════════ */
+let carouselIdx = 0;
+const stepsTrack = document.getElementById('steps-track');
+const dots = document.querySelectorAll('.carousel-dot');
+function setCarousel(idx){
+  carouselIdx = idx;
+  stepsTrack.style.transform = `translateX(-${idx*100}%)`;
+  dots.forEach((d,i)=> d.classList.toggle('active', i===idx));
+}
+dots.forEach(d => d.addEventListener('click', ()=> setCarousel(+d.dataset.idx)));
+let autoSlide = setInterval(()=> setCarousel((carouselIdx+1)%4), 3000);
+stepsTrack.addEventListener('touchstart', ()=> clearInterval(autoSlide), {passive:true});
+
+/* ════════════════════════════════════════
+   STORAGE
+════════════════════════════════════════ */
+const _mem = {};
+const safeStorage = {
+  getItem:(k)=>{ try{return localStorage.getItem(k);}catch{return _mem[k]??null;} },
+  setItem:(k,v)=>{ try{localStorage.setItem(k,v);}catch{} _mem[k]=v; },
+  removeItem:(k)=>{ try{localStorage.removeItem(k);}catch{} delete _mem[k]; },
+};
+
+/* ════════════════════════════════════════
+   LEVELS
+════════════════════════════════════════ */
+const LEVELS = [
+  {min:0,   name:{kk:'Жаңадан келген', ru:'Новичок'},         emoji:'🌱', pts:10},
+  {min:10,  name:{kk:'Эко-белсенді',   ru:'Эко-активист'},    emoji:'♻️', pts:30},
+  {min:30,  name:{kk:'Сұрыптаушы',     ru:'Сортировщик'},     emoji:'🌿', pts:70},
+  {min:70,  name:{kk:'Эко-батыр',      ru:'Эко-воин'},        emoji:'🦋', pts:150},
+  {min:150, name:{kk:'Эко-кейіпкер',   ru:'Эко-герой'},       emoji:'🌍', pts:300},
+  {min:300, name:{kk:'Планета сақшысы',ru:'Защитник планеты'},emoji:'🏆', pts:Infinity},
+];
+function getLevel(pts){
+  for(let i=LEVELS.length-1;i>=0;i--) if(pts>=LEVELS[i].min) return {...LEVELS[i],idx:i};
+  return {...LEVELS[0],idx:0};
+}
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+let state = {points:0, scans:0, history:[]};
+function saveState(){ safeStorage.setItem('ecosen_state', JSON.stringify(state)); }
+function loadState(){ try{ const s=JSON.parse(safeStorage.getItem('ecosen_state')); if(s) state=s; }catch{} }
+
+/* ════════════════════════════════════════
+   GAMIFICATION
+════════════════════════════════════════ */
+function awardPoints(pts, material, icon){
+  const prev = getLevel(state.points);
+  state.points += pts; state.scans++;
+  state.history.unshift({pts, material, icon, time:Date.now()});
+  if(state.history.length>50) state.history.pop();
+  saveState();
+  const nxt = getLevel(state.points);
+  showToast('+'+pts+' '+t('toast_earned'));
+  updateBanner(); updateProfile(); updateDrawer();
+  if(nxt.idx > prev.idx) setTimeout(()=>showLevelUp(nxt), 900);
+  if(authToken){
+    apiCall('POST','/api/user/scan',{material,points:pts,icon})
+      .then(r=>{ if(r?.user){state.points=r.user.points;state.scans=r.user.scans;updateBanner();} })
+      .catch(()=>{});
+  }
+}
+
+function showToast(msg){
+  const t_ = document.getElementById('points-toast');
+  document.getElementById('toast-text').textContent = msg;
+  t_.classList.add('show');
+  setTimeout(()=>t_.classList.remove('show'),2800);
+}
+
+function showLevelUp(lvl){
+  document.getElementById('lu-emoji').textContent = lvl.emoji;
+  document.getElementById('lu-name').textContent = lvl.name[currentLang]||lvl.name.ru;
+  document.getElementById('lu-sub').textContent = state.points+' pts';
+  document.getElementById('levelup-overlay').classList.add('show');
+}
+document.getElementById('lu-close').addEventListener('click',()=>
+  document.getElementById('levelup-overlay').classList.remove('show')
+);
+
+function updateBanner(){
+  const lvl=getLevel(state.points), nxt=LEVELS[lvl.idx+1];
+  const pct = nxt ? Math.min(100,((state.points-lvl.min)/(nxt.pts-lvl.min))*100) : 100;
+  document.getElementById('banner-pts').textContent = state.points;
+  document.getElementById('banner-level-name').textContent = lvl.name[currentLang]||lvl.name.ru;
+  document.getElementById('banner-bar').style.width = pct+'%';
+  document.getElementById('banner-level-next').textContent = nxt ? state.points+' / '+nxt.pts : '★ MAX';
+}
+
+function updateDrawer(){
+  const lvl = getLevel(state.points);
+  document.getElementById('drawer-avatar').textContent = lvl.emoji;
+  document.getElementById('drawer-name').textContent = currentUser ? currentUser.name : 'EcoSen';
+  document.getElementById('drawer-pts').textContent = state.points+' '+(currentLang==='kk'?'балл':'баллов')+' · '+(lvl.name[currentLang]||lvl.name.ru);
+  const btn = document.getElementById('drawer-auth-btn');
+  if(currentUser){
+    btn.textContent = '🚪 '+(currentLang==='kk'?'Шығу':'Выйти');
+    btn.className = 'drawer-auth-btn logout-style';
+  } else {
+    btn.textContent = '🔑 '+(currentLang==='kk'?'Кіру / Тіркелу':'Войти / Регистрация');
+    btn.className = 'drawer-auth-btn';
+  }
+}
+
+function updateProfile(){
+  const lvl = getLevel(state.points);
+  document.getElementById('stat-pts').textContent   = state.points;
+  document.getElementById('stat-scans').textContent = state.scans;
+  document.getElementById('stat-level').textContent = lvl.idx+1;
+  document.getElementById('profile-avatar').textContent = lvl.emoji;
+  document.getElementById('profile-level-display').textContent = (lvl.idx+1)+' · '+(lvl.name[currentLang]||lvl.name.ru);
+  const authBtn = document.getElementById('profile-auth-btn');
+  if(authBtn){
+    if(currentUser){
+      authBtn.textContent='🚪 '+(currentLang==='kk'?'Шығу':'Выйти');
+      authBtn.className='auth-toggle-btn logout';
+    } else {
+      authBtn.textContent='🔑 '+(currentLang==='kk'?'Кіру':'Войти');
+      authBtn.className='auth-toggle-btn';
+    }
+  }
+  document.getElementById('profile-username-display').textContent = currentUser?'@'+currentUser.username:'';
+  const nameEl = document.getElementById('profile-name-display');
+  if(nameEl && currentUser) nameEl.textContent = currentUser.name;
+  const adminWrap = document.getElementById('admin-panel-btn-wrap');
+  if(adminWrap) adminWrap.style.display = (currentUser&&currentUser.is_admin)?'block':'none';
+
+  // history
+  const histEl = document.getElementById('history-list');
+  if(!state.history.length){
+    histEl.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>${t('history_empty')}</p></div>`;
+    return;
+  }
+  histEl.innerHTML = state.history.map(h=>`
+    <div class="history-item">
+      <div class="history-icon">${h.icon||'♻️'}</div>
+      <div class="history-info">
+        <div class="history-material">${h.material}</div>
+        <div class="history-time">${timeAgo(h.time)}</div>
+      </div>
+      <div class="history-pts">+${h.pts}</div>
+    </div>`).join('');
+}
+
+function timeAgo(ts){
+  const d=Math.floor((Date.now()-ts)/1000);
+  if(currentLang==='kk'){
+    if(d<60) return d+' сек бұрын';
+    if(d<3600) return Math.floor(d/60)+' мин бұрын';
+    if(d<86400) return Math.floor(d/3600)+' сағ бұрын';
+    return Math.floor(d/86400)+' күн бұрын';
+  }
+  if(d<60) return d+' сек назад';
+  if(d<3600) return Math.floor(d/60)+' мин назад';
+  if(d<86400) return Math.floor(d/3600)+' ч назад';
+  return Math.floor(d/86400)+' д назад';
+}
+
+/* ════════════════════════════════════════
+   LEADERBOARD
+════════════════════════════════════════ */
+const MOCK = [
+  {name:'Aisha K.',  pts:340, emoji:'🌍'},
+  {name:'Ruslan M.', pts:280, emoji:'🏆'},
+  {name:'Dinara S.', pts:195, emoji:'🦋'},
+  {name:'Erik T.',   pts:130, emoji:'🌿'},
+  {name:'Zarina B.', pts:85,  emoji:'♻️'},
+  {name:()=>currentLang==='kk'?'Сіз':'Вы', pts:0, emoji:'🌱', isMe:true},
+];
+function renderLeaderboard(){
+  const list=[...MOCK]; list[5].pts=state.points;
+  list.sort((a,b)=>b.pts-a.pts);
+  const rc=['gold','silver','bronze'];
+  document.getElementById('leaderboard-list').innerHTML = list.map((p,i)=>`
+    <div class="lb-item${p.isMe?' me':''}">
+      <div class="lb-rank ${rc[i]||''}">${i+1}</div>
+      <div class="lb-avatar">${p.emoji}</div>
+      <div class="lb-name">${typeof p.name==='function'?p.name():p.name}${p.isMe?` <span class="lb-me-tag">${currentLang==='kk'?'МЕН':'Я'}</span>`:''}</div>
+      <div class="lb-pts">${p.pts} pts</div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════════
+   REWARDS
+════════════════════════════════════════ */
+const REWARDS=[
+  {emoji:'☕', name:{kk:'Кофе купоны',   ru:'Купон на кофе'},  desc:{kk:'Серіктес кафе', ru:'В кафе-партнёре'}, cost:100},
+  {emoji:'🛍️',name:{kk:'Эко-сөмке',     ru:'Эко-сумка'},      desc:{kk:'Қайта қолданылатын',ru:'Многоразовая'}, cost:200},
+  {emoji:'🌳', name:{kk:'Ағаш отырғызу', ru:'Посадить дерево'},desc:{kk:'Сіздің атыңызбен',ru:'От вашего имени'},cost:300},
+  {emoji:'🎟️',name:{kk:'Кино билеті',   ru:'Билет в кино'},   desc:{kk:'Серіктес кинотеатр',ru:'Кинотеатр-партнёр'},cost:500},
+];
+function renderRewards(){
+  document.getElementById('rewards-pts-label').textContent =
+    (currentLang==='ru'?'Доступно: ':'Қолжетімді: ')+state.points+' pts';
+  document.getElementById('rewards-grid').innerHTML = REWARDS.map(r=>{
+    const ok=state.points>=r.cost;
+    return `<div class="reward-card${ok?'':' locked'}">
+      ${ok?'':`<div class="reward-lock">🔒</div>`}
+      <div class="reward-emoji">${r.emoji}</div>
+      <div class="reward-name">${r.name[currentLang]||r.name.ru}</div>
+      <div class="reward-desc">${r.desc[currentLang]||r.desc.ru}</div>
+      <div class="reward-cost${ok?' available':''}">★ ${r.cost}</div>
+      <div class="coming-soon">${currentLang==='kk'?'жақында':'скоро'}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════
+   WASTE DATA
+════════════════════════════════════════ */
+const wasteData={
+  kk:{
+    'Пластик':{icon:'♻️',title:'Пластик', bin:'Сары контейнер', forbidden:'Ластанған пластик',tip:'Бөтелкелерді жуып кептіріңіз.'},
+    'Стекло': {icon:'🫙',title:'Шыны',    bin:'Жасыл контейнер',forbidden:'Керамика',         tip:'Шыны ыдыстарды жуыңыз.'},
+    'Метал':  {icon:'🔩',title:'Металл',  bin:'Сұр контейнер',  forbidden:'Аккумулятор',       tip:'Алюминий банкаларды қысыңыз.'},
+    'Картон': {icon:'📦',title:'Картон',  bin:'Көк контейнер',  forbidden:'Майлы картон',      tip:'Картонды тегіс бүктеп сақтаңыз.'},
+  },
+  ru:{
+    'Пластик':{icon:'♻️',title:'Пластик', bin:'Жёлтый контейнер',forbidden:'Загрязнённый пластик',tip:'Промойте и высушите бутылки. Собирайте PET, HDPE, PP отдельно.'},
+    'Стекло': {icon:'🫙',title:'Стекло',  bin:'Зелёный контейнер',forbidden:'Керамика',            tip:'Промойте стеклянную тару. Снимайте крышки.'},
+    'Метал':  {icon:'🔩',title:'Металл',  bin:'Серый контейнер', forbidden:'Аккумуляторы',          tip:'Сожмите алюминиевые банки. Разделяйте сталь и алюминий.'},
+    'Картон': {icon:'📦',title:'Картон',  bin:'Синий контейнер', forbidden:'Жирный картон',         tip:'Сложите картон плоско и защитите от влаги.'},
+  }
+};
+
+/* ════════════════════════════════════════
+   MAP
+════════════════════════════════════════ */
+let map=null, mapInit=false;
+const rpts=[
+  {lat:43.6402,lng:51.2021,title:{ru:'Eco Waste Aqtau (мкр 29а, 23/4)',kk:'Eco Waste Aqtau (29а мкр)'},types:{ru:'Пластик, металл, стекло, бумага',kk:'Пластик, металл, шыны'},phone:'+7 (727) 251-52-33'},
+  {lat:43.6523,lng:51.1847,title:{ru:'ТОО «Хэлп-Экойл» (5 мкр, 3/2)',kk:'«Хэлп-Экойл» ЖШС'},types:{ru:'Все виды вторсырья',kk:'Барлық қайта өңделетін'},phone:'Уточняйте'},
+  {lat:43.6389,lng:51.2045,title:{ru:'Пункт металлолома (мкр 29а)',kk:'Металл қабылдау (29а мкр)'},types:{ru:'Металл, алюминий',kk:'Металл, алюминий'},phone:'Уточняйте'},
+  {lat:43.6601,lng:51.1712,title:{ru:'Пункт приёма (3Б мкр, 39/3)',kk:'Қабылдау (3Б мкр)'},types:{ru:'Металл, макулатура',kk:'Металл, макулатура'},phone:'Уточняйте'},
+  {lat:43.6478,lng:51.1634,title:{ru:'Пункт приёма (11 мкр, 50)',kk:'Қабылдау (11 мкр)'},types:{ru:'Металл, пластик',kk:'Металл, пластик'},phone:'Уточняйте'},
+  {lat:43.6556,lng:51.1523,title:{ru:'Пункт приёма (4 мкр, 28/1)',kk:'Қабылдау (4 мкр)'},types:{ru:'Металлолом',kk:'Металл сынықтары'},phone:'Уточняйте'},
+  {lat:43.6445,lng:51.1801,title:{ru:'Пункт приёма (12 мкр, 50/2)',kk:'Қабылдау (12 мкр)'},types:{ru:'Металл, электроника',kk:'Металл, электроника'},phone:'Уточняйте'},
+];
+function initMap(){
+  map=L.map('map').setView([43.6481,51.1643],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  rpts.forEach(p=>{
+    const ti=p.title[currentLang]||p.title.ru, ty=p.types[currentLang]||p.types.ru;
+    L.marker([p.lat,p.lng]).addTo(map).bindPopup(`<b>${ti}</b><br><small>${ty}</small>${p.phone?'<br>📞 '+p.phone:''}`);
+  });
+  mapInit=true;
+}
+document.getElementById('btn-map').addEventListener('click',()=>{
+  const mw=document.getElementById('map-wrapper');
+  mw.classList.toggle('visible');
+  if(mw.classList.contains('visible')){ if(!mapInit)initMap(); else map.invalidateSize(); }
+});
+
+/* ════════════════════════════════════════
+   AI MODEL
+════════════════════════════════════════ */
+const MODEL_URL='https://teachablemachine.withgoogle.com/models/4cC54KsZN/';
+let model=null, imageReady=false, modelLoading=false;
+const imageEl=document.getElementById('uploaded-image');
+const placeholder=document.getElementById('upload-placeholder');
+const uploadZoneEl=document.getElementById('upload-zone');
+const loadingCard=document.getElementById('loading-card');
+const reportCard=document.getElementById('report-card');
+const modelStatus=document.getElementById('model-status');
+
+function setModelStatus(msg,color){
+  modelStatus.style.display=msg?'block':'none';
+  modelStatus.style.color=color||'#888';
+  modelStatus.textContent=msg;
+}
+async function loadModel(){
+  if(modelLoading)return; modelLoading=true;
+  setModelStatus(currentLang==='kk'?'⏳ Модель жүктелуде...':'⏳ Загрузка модели...','#888');
+  try{
+    model=await Promise.race([
+      tmImage.load(MODEL_URL+'model.json',MODEL_URL+'metadata.json'),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),15000))
+    ]);
+    setModelStatus('✅ Модель готова','#017235');
+    setTimeout(()=>setModelStatus(''),2000);
+  }catch(e){
+    model=null;
+    setModelStatus('❌ Не удалось загрузить модель. Проверьте интернет.','#e53935');
+  }
+  modelLoading=false;
+}
+loadModel();
+
+document.getElementById('image-upload').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    imageEl.src=ev.target.result; imageEl.style.display='block';
+    placeholder.style.display='none'; uploadZoneEl.classList.add('has-image');
+    imageReady=true;
+    reportCard.classList.remove('visible'); loadingCard.classList.remove('visible');
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('btn-analyze').addEventListener('click',async()=>{
+  if(!imageReady){alert(t('no_image'));return;}
+  if(!model){ loadingCard.classList.add('visible'); await loadModel(); }
+  if(!model){ loadingCard.classList.remove('visible'); return; }
+  loadingCard.classList.add('visible'); reportCard.classList.remove('visible');
+  setTimeout(async()=>{ await predict(); loadingCard.classList.remove('visible'); },400);
+});
+
+async function predict(){
+  if(!model){loadingCard.classList.remove('visible');return;}
+  let preds;
+  try{ preds=await model.predict(imageEl); }
+  catch(e){ console.error(e); loadingCard.classList.remove('visible'); setModelStatus('❌ Ошибка анализа: '+e.message,'#e53935'); return; }
+  preds.sort((a,b)=>b.probability-a.probability);
+  const best=preds[0], pct=best.probability;
+  const ld=wasteData[currentLang]||wasteData.ru;
+  const info=(pct>=0.4&&ld[best.className])?ld[best.className]:null;
+
+  const badge=document.getElementById('confidence-badge');
+  badge.textContent=(pct*100).toFixed(1)+'%';
+  badge.className='confidence-pill'+(pct<0.4?' low':'');
+  document.getElementById('bar-fill').style.width=(pct*100)+'%';
+  reportCard.dataset.rawClass=best.className;
+  reportCard.dataset.confidence=pct.toFixed(4);
+
+  if(info){
+    document.getElementById('report-icon').textContent=info.icon;
+    document.getElementById('report-title').textContent=info.title;
+    document.getElementById('info-bin').textContent=info.bin;
+    document.getElementById('info-forbidden').textContent=info.forbidden;
+    document.getElementById('info-tip').textContent=info.tip;
+  } else {
+    document.getElementById('report-icon').textContent='ℹ️';
+    document.getElementById('report-title').textContent=t('not_detected');
+    document.getElementById('info-bin').textContent='—';
+    document.getElementById('info-forbidden').textContent='—';
+    document.getElementById('info-tip').textContent=best.className+' ('+(pct*100).toFixed(1)+'%)';
+  }
+  reportCard.classList.add('visible');
+
+  // AI advice if logged in
+  if(authToken && info){
+    const mk=getMaterialKey(best.className);
+    if(mk) fetchAIAdvice(mk, pct);
+  }
+}
+
+function getMaterialKey(cn){
+  const map={'Пластик':'plastic','Стекло':'glass','Метал':'metal','Металл':'metal','Картон':'cardboard','Бумага':'paper','Органика':'organic','Батарейки':'battery','Электроника':'electronics','Plastic':'plastic','Glass':'glass','Metal':'metal','Cardboard':'cardboard','Paper':'paper'};
+  if(map[cn])return map[cn];
+  const lo=cn.toLowerCase();
+  for(const[k,v]of Object.entries(map)) if(lo.includes(k.toLowerCase())||k.toLowerCase().includes(lo))return v;
+  return null;
+}
+
+/* ════════════════════════════════════════
+   API
+════════════════════════════════════════ */
+const API_BASE='https://ecosen2-0.onrender.com';
+let authToken=safeStorage.getItem('ecosen_token')||null;
+let currentUser=null;
+
+async function apiCall(method,path,body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(authToken) opts.headers['Authorization']='Bearer '+authToken;
+  if(body) opts.body=JSON.stringify(body);
+  const res=await fetch(API_BASE+path,opts);
+  const data=await res.json();
+  if(!res.ok) throw new Error(data.error||'Request failed');
+  return data;
+}
+
+async function tryAutoLogin(){
+  if(!authToken){showAuthModal();return;}
+  try{
+    const d=await apiCall('GET','/api/auth/me');
+    currentUser=d.user; syncServerState(currentUser); hideAuthModal(); updateProfileName(); updateDrawer();
+  }catch{
+    safeStorage.removeItem('ecosen_token'); authToken=null; showAuthModal();
+  }
+}
+function syncServerState(u){ state.points=u.points; state.scans=u.scans; saveState(); updateBanner(); updateProfile(); updateDrawer(); }
+function updateProfileName(){
+  if(!currentUser)return;
+  const el=document.getElementById('profile-name-display'); if(el)el.textContent=currentUser.name;
+  const jn=document.getElementById('profile-joined'); if(jn)jn.textContent=new Date(currentUser.created_at).toLocaleDateString();
+}
+
+async function renderLeaderboardFromServer(){
+  if(!authToken){renderLeaderboard();return;}
+  try{
+    const d=await apiCall('GET','/api/user/leaderboard');
+    const rc=['gold','silver','bronze'], myId=currentUser?.id;
+    document.getElementById('leaderboard-list').innerHTML=d.leaderboard.map((p,i)=>{
+      const isMe=p.id===myId;
+      return `<div class="lb-item${isMe?' me':''}">
+        <div class="lb-rank ${rc[i]||''}">${i+1}</div>
+        <div class="lb-avatar">🌿</div>
+        <div class="lb-name">${p.name}${isMe?` <span class="lb-me-tag">${currentLang==='kk'?'МЕН':'Я'}</span>`:''}</div>
+        <div class="lb-pts">${p.points} pts</div>
+      </div>`;
+    }).join('');
+    if(d.my_rank&&d.my_rank>10)
+      document.getElementById('leaderboard-list').insertAdjacentHTML('beforeend',
+        `<div style="text-align:center;padding:10px;font-size:12px;color:var(--text-muted);font-weight:600;">${currentLang==='kk'?'Сіздің рейтингіңіз':'Ваш рейтинг'}: #${d.my_rank}</div>`);
+  }catch{renderLeaderboard();}
+}
+
+async function loadHistoryFromServer(){
+  if(!authToken){updateProfile();return;}
+  try{
+    const hist=await apiCall('GET','/api/user/history');
+    const histEl=document.getElementById('history-list');
+    if(!hist.length){ histEl.innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><p>${currentLang==='kk'?'Тарих бос':'История пуста'}</p></div>`; return; }
+    histEl.innerHTML=hist.map(h=>`
+      <div class="history-item">
+        <div class="history-icon">${h.icon||'♻️'}</div>
+        <div class="history-info"><div class="history-material">${h.material}</div><div class="history-time">${timeAgo(new Date(h.created_at).getTime())}</div></div>
+        <div class="history-pts">+${h.points}</div>
+      </div>`).join('');
+  }catch{updateProfile();}
+}
+
+/* ════════════════════════════════════════
+   AI ADVICE + ECOBOT CHAT
+════════════════════════════════════════ */
+async function fetchAIAdvice(materialKey, confidence){
+  let ab=document.getElementById('ai-advice-block');
+  if(!ab){
+    ab=document.createElement('div'); ab.id='ai-advice-block';
+    ab.style.cssText='margin:0 16px 14px;padding:12px 14px;background:var(--green-light);border:1.5px solid #b8ddc8;border-radius:12px;font-size:13px;line-height:1.6;';
+    reportCard.appendChild(ab);
+  }
+  ab.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:var(--green);"><div style="width:14px;height:14px;border:2px solid #b8ddc8;border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div><span style="font-size:12px;font-weight:600;">EcoBot анализирует...</span></div>`;
+  try{
+    const data=await apiCall('POST','/api/ai/waste-advice',{material:materialKey,confidence:confidence||0.5,lang:currentLang});
+    const um={now:{c:'#017235',bg:'rgba(1,114,53,0.1)',ic:'✅'},soon:{c:'#f59e0b',bg:'rgba(245,158,11,0.1)',ic:'📍'},special:{c:'#e53935',bg:'rgba(229,57,53,0.1)',ic:'⚠️'}};
+    const urg=um[data.urgency]||um.soon;
+    let html=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;"><span style="font-size:18px;">${data.icon||'🤖'}</span><span style="font-weight:800;color:var(--text);font-size:13px;">EcoBot</span><span style="margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${urg.bg};color:${urg.c};">${urg.ic}</span></div><div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;font-weight:500;">${data.instructions||''}</div>`;
+    if(data.steps?.length){
+      html+=`<div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-dim);margin-bottom:5px;">Что делать:</div>`;
+      html+=data.steps.map((s,i)=>`<div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:4px;"><span style="width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:13px;color:var(--text-muted);font-weight:500;">${s}</span></div>`).join('');
+    }
+    if(data.eco_tip) html+=`<div style="margin-top:7px;font-size:12px;color:var(--green);font-style:italic;font-weight:600;">💡 ${data.eco_tip}</div>`;
+    ab.innerHTML=html;
+    buildEcoChat(ab, materialKey);
+  }catch{
+    ab.innerHTML=`<span style="color:var(--text-muted);font-size:12px;font-weight:600;">💬 AI-советы недоступны. Проверьте соединение.</span>`;
+  }
+}
+
+function buildEcoChat(container, materialKey){
+  const chatHistory=[];
+  const wrap=document.createElement('div');
+  wrap.style.cssText='margin-top:12px;border-top:1px solid #b8ddc8;padding-top:10px;';
+  wrap.innerHTML=`
+    <div id="ecb-msgs" style="display:flex;flex-direction:column;gap:7px;max-height:220px;overflow-y:auto;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:7px;align-items:flex-end;">
+      <textarea id="ecb-input" rows="1" placeholder="${currentLang==='kk'?'EcoBot-қа сұрақ...':'Вопрос EcoBot...'}" style="flex:1;padding:9px 11px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:'Montserrat',sans-serif;resize:none;outline:none;background:#fff;color:var(--text);line-height:1.4;max-height:72px;overflow-y:auto;"></textarea>
+      <button id="ecb-send" style="width:34px;height:34px;flex-shrink:0;background:var(--green);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:opacity 0.2s;">➤</button>
+    </div>`;
+  container.appendChild(wrap);
+  const msgs=wrap.querySelector('#ecb-msgs'), inp=wrap.querySelector('#ecb-input'), send=wrap.querySelector('#ecb-send');
+
+  function addMsg(role,text,loading=false){
+    const isU=role==='user', div=document.createElement('div');
+    div.style.cssText='display:flex;'+(isU?'justify-content:flex-end':'justify-content:flex-start');
+    const bub=document.createElement('div');
+    bub.style.cssText=`max-width:86%;padding:7px 11px;border-radius:${isU?'12px 12px 3px 12px':'12px 12px 12px 3px'};font-size:13px;line-height:1.5;white-space:pre-wrap;font-weight:500;${isU?'background:var(--green);color:#fff;':'background:#fff;color:var(--text);border:1.5px solid var(--border);'}`;
+    if(loading) bub.innerHTML=`<span style="display:inline-flex;gap:4px;align-items:center;">${[0,.2,.4].map(d=>`<span style="width:5px;height:5px;border-radius:50%;background:var(--green);animation:ecoDot 1s ${d}s ease-in-out infinite;"></span>`).join('')}</span>`;
+    else bub.textContent=text;
+    div.appendChild(bub); msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
+    return bub;
+  }
+
+  setTimeout(()=>{
+    addMsg('assistant',currentLang==='kk'?'Сәлем! 👋 Мен EcoBot. Сұрақтарыңыз болса — сұраңыз!':'Привет! 👋 Я EcoBot. Если есть вопросы — спрашивай!');
+    chatHistory.push({role:'assistant',content:`Привет! Я EcoBot. Материал: ${materialKey}.`});
+  },400);
+
+  async function sendMsg(){
+    const text=inp.value.trim(); if(!text)return;
+    inp.value=''; inp.style.height='auto'; send.disabled=true; send.style.opacity='0.5';
+    addMsg('user',text); chatHistory.push({role:'user',content:text});
+    const lb=addMsg('assistant','',true);
+    try{
+      const res=await fetch(API_BASE+'/api/ai/chat',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',...(authToken?{'Authorization':'Bearer '+authToken}:{})},
+        body:JSON.stringify({message:text,context:`Пользователь смотрит советы по переработке: ${materialKey}. Отвечай кратко, по делу, используй эмодзи.`,history:chatHistory.slice(-8)})
       });
-      renderLeaderboard();
-      renderRewards();
-      updateBanner();
-      // Update map labels
-      const mapTitle = document.getElementById('map-title-label');
-      if (mapTitle) mapTitle.textContent = currentLang === 'kk' ? 'Актаудағы қабылдау пункттері' : 'Пункты приёма в Актау';
-      const mapSub = document.getElementById('map-sub-label');
-      if (mapSub) mapSub.textContent = currentLang === 'kk' ? '7 расталған пункт' : '7 верифицированных пунктов';
-      // Update profile if visible
-      updateProfile();
-    }
- 
-    function toggleLang() {
-      currentLang = currentLang === 'kk' ? 'ru' : 'kk';
-      const btn = document.getElementById('lang-toggle-btn');
-      if (btn) btn.textContent = currentLang === 'kk' ? 'РУС' : 'ҚАЗ';
-      applyLang();
-    }
- 
-    // ─── LEVELS ──────────────────────────────────────────────────────────────
-    const LEVELS = [
-      { min: 0,   name: { kk: 'Жаңадан келген', ru: 'Новичок',       en: 'Newcomer'     }, emoji: '🌱', pts: 10 },
-      { min: 10,  name: { kk: 'Эко-белсенді',  ru: 'Эко-активист',  en: 'Eco-activist' }, emoji: '♻️', pts: 30 },
-      { min: 30,  name: { kk: 'Сұрыптаушы',    ru: 'Сортировщик',   en: 'Sorter'       }, emoji: '🌿', pts: 70 },
-      { min: 70,  name: { kk: 'Эко-батыр',     ru: 'Эко-воин',      en: 'Eco-warrior'  }, emoji: '🦋', pts: 150 },
-      { min: 150, name: { kk: 'Эко-кейіпкер',  ru: 'Эко-герой',     en: 'Eco-hero'     }, emoji: '🌍', pts: 300 },
-      { min: 300, name: { kk: 'Планета сақшысы',ru: 'Защитник планеты',en: 'Planet guardian'}, emoji: '🏆', pts: Infinity },
-    ];
- 
-    function getLevel(pts) {
-      for (let i = LEVELS.length - 1; i >= 0; i--) {
-        if (pts >= LEVELS[i].min) return { ...LEVELS[i], idx: i };
-      }
-      return { ...LEVELS[0], idx: 0 };
-    }
- 
-    // ─── STATE ───────────────────────────────────────────────────────────────
-    let state = { points: 0, scans: 0, history: [] };
- 
-    function saveState() { safeStorage.setItem('ecosen_state', JSON.stringify(state)); }
-    function loadState() {
-      try {
-        const s = JSON.parse(safeStorage.getItem('ecosen_state'));
-        if (s) state = s;
-      } catch(e) {}
-    }
- 
-    // ─── GAMIFICATION ────────────────────────────────────────────────────────
-    function awardPoints(pts, material, icon) {
-      const prevLevel = getLevel(state.points);
-      state.points += pts;
-      state.scans += 1;
-      state.history.unshift({ pts, material, icon, time: Date.now() });
-      if (state.history.length > 50) state.history.pop();
-      saveState();
- 
-      const newLevel = getLevel(state.points);
- 
-      showToast('+' + pts + ' ' + t('toast_earned'));
-      updateBanner();
-      updateProfile();
- 
-      if (newLevel.idx > prevLevel.idx) {
-        setTimeout(() => showLevelUp(newLevel), 900);
-      }
+      const d=await res.json();
+      const reply=d.reply||d.error||'Не могу ответить прямо сейчас 😔';
+      lb.innerHTML=''; lb.textContent=reply;
+      chatHistory.push({role:'assistant',content:reply}); msgs.scrollTop=msgs.scrollHeight;
+    }catch{ lb.textContent='Ошибка соединения. Попробуй ещё раз.'; }
+    send.disabled=false; send.style.opacity='1';
+  }
+  send.addEventListener('click',sendMsg);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} });
+  inp.addEventListener('input',()=>{ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,72)+'px'; });
+}
 
-      // Синхронизация с сервером (если залогинен)
-      if (typeof authToken !== 'undefined' && authToken) {
-        apiCall('POST', '/api/user/scan', { material, points: pts, icon })
-          .then(res => {
-            if (res?.user) {
-              state.points = res.user.points;
-              state.scans = res.user.scans;
-              updateBanner();
-            }
-          })
-          .catch(() => {});
-      }
-    }
- 
-    function showToast(msg) {
-      const toast = document.getElementById('points-toast');
-      document.getElementById('toast-text').textContent = msg;
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2800);
-    }
- 
-    function showLevelUp(lvl) {
-      document.getElementById('lu-emoji').textContent = lvl.emoji;
-      document.getElementById('lu-name').textContent = lvl.name[currentLang] || lvl.name['ru'];
-      document.getElementById('lu-sub').textContent = state.points + ' pts';
-      document.getElementById('levelup-overlay').classList.add('show');
-    }
- 
-    document.getElementById('lu-close').addEventListener('click', () => {
-      document.getElementById('levelup-overlay').classList.remove('show');
-    });
- 
-    function updateBanner() {
-      const lvl = getLevel(state.points);
-      const nextLvl = LEVELS[lvl.idx + 1];
-      const ptsInLevel = state.points - lvl.min;
-      const ptsNeeded = nextLvl ? nextLvl.pts - lvl.min : lvl.pts - lvl.min;
-      const pct = nextLvl ? Math.min(100, (ptsInLevel / ptsNeeded) * 100) : 100;
- 
-      document.getElementById('banner-pts').textContent = state.points;
-      document.getElementById('banner-level-name').textContent = lvl.name[currentLang] || lvl.name['ru'];
-      document.getElementById('banner-bar').style.width = pct + '%';
- 
-      if (nextLvl) {
-        document.getElementById('banner-level-next').textContent = state.points + ' / ' + nextLvl.pts;
-      } else {
-        document.getElementById('banner-level-next').textContent = '★ MAX';
-      }
-    }
- 
-    function updateProfile() {
-      const lvl = getLevel(state.points);
-      document.getElementById('stat-pts').textContent = state.points;
-      document.getElementById('stat-scans').textContent = state.scans;
-      document.getElementById('stat-level').textContent = lvl.idx + 1;
-      document.getElementById('profile-avatar').textContent = lvl.emoji;
-      document.getElementById('profile-level-display').textContent =
-        (lvl.idx + 1) + ' · ' + (lvl.name[currentLang] || lvl.name['ru']);
-
-      // Show/hide login or logout button
-      const authBtn = document.getElementById('profile-auth-btn');
-      if (authBtn) {
-        if (currentUser) {
-          authBtn.textContent = '🚪 ' + (currentLang === 'kk' ? 'Шығу' : 'Выйти');
-          authBtn.style.borderColor = '';
-          authBtn.style.color = '';
-        } else {
-          authBtn.textContent = '🔑 ' + (currentLang === 'kk' ? 'Кіру' : 'Войти');
-          authBtn.style.borderColor = 'var(--green-dim)';
-          authBtn.style.color = 'var(--green)';
-        }
-      }
-
-      // Show username
-      const usernameEl = document.getElementById('profile-username-display');
-      if (usernameEl) {
-        usernameEl.textContent = currentUser ? '@' + currentUser.username : '';
-      }
-
-      // Update name display
-      const nameEl = document.getElementById('profile-name-display');
-      if (nameEl && currentUser) nameEl.textContent = currentUser.name;
-
-      // Show admin button if admin
-      const adminBtn = document.getElementById('admin-panel-btn-wrap');
-      if (adminBtn) {
-        adminBtn.style.display = (currentUser && currentUser.is_admin) ? 'block' : 'none';
-      }
-
-      // History
-      const histEl = document.getElementById('history-list');
-      if (state.history.length === 0) {
-        histEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><span>${t('history_empty')}</span></div>`;
-        return;
-      }
-      histEl.innerHTML = state.history.map(h => {
-        const ago = timeAgo(h.time);
-        return `<div class="history-item">
-          <div class="history-icon">${h.icon || '♻️'}</div>
-          <div class="history-info">
-            <div class="history-material">${h.material}</div>
-            <div class="history-time">${ago}</div>
-          </div>
-          <div class="history-pts">+${h.pts}</div>
-        </div>`;
-      }).join('');
-    }
- 
-    function timeAgo(ts) {
-      const diff = Math.floor((Date.now() - ts) / 1000);
-      if (currentLang === 'kk') {
-        if (diff < 60) return diff + ' сек бұрын';
-        if (diff < 3600) return Math.floor(diff / 60) + ' мин бұрын';
-        if (diff < 86400) return Math.floor(diff / 3600) + ' сағ бұрын';
-        return Math.floor(diff / 86400) + ' күн бұрын';
-      } else {
-        if (diff < 60) return diff + ' сек назад';
-        if (diff < 3600) return Math.floor(diff / 60) + ' мин назад';
-        if (diff < 86400) return Math.floor(diff / 3600) + ' ч назад';
-        return Math.floor(diff / 86400) + ' д назад';
-      }
-    }
- 
-    // ─── LEADERBOARD ─────────────────────────────────────────────────────────
-    const MOCK_LEADERS = [
-      { name: 'Aisha K.',  pts: 340, emoji: '🌍' },
-      { name: 'Ruslan M.', pts: 280, emoji: '🏆' },
-      { name: 'Dinara S.', pts: 195, emoji: '🦋' },
-      { name: 'Erik T.',   pts: 130, emoji: '🌿' },
-      { name: 'Zarina B.', pts: 85,  emoji: '♻️' },
-      { name: () => currentLang === 'kk' ? 'Сіз' : 'Вы', pts: 0, emoji: '🌱', isMe: true },
-    ];
- 
-    function renderLeaderboard() {
-      const list = [...MOCK_LEADERS];
-      list[5].pts = state.points;
-      list.sort((a, b) => b.pts - a.pts);
-      const rankClasses = ['gold', 'silver', 'bronze'];
-      document.getElementById('leaderboard-list').innerHTML = list.map((p, i) => {
-        const rc = rankClasses[i] || '';
-        return `<div class="lb-item${p.isMe ? ' me' : ''}">
-          <div class="lb-rank ${rc}">${i + 1}</div>
-          <div class="lb-avatar" style="background:var(--accent-light)">${p.emoji}</div>
-          <div class="lb-name">${typeof p.name === 'function' ? p.name() : p.name}${p.isMe ? ' <span class="lb-me-tag">' + (currentLang === 'kk' ? 'МЕН' : 'Я') + '</span>' : ''}</div>
-          <div class="lb-pts">${p.pts} pts</div>
-        </div>`;
-      }).join('');
-    }
- 
-    // ─── REWARDS ─────────────────────────────────────────────────────────────
-    const REWARDS = [
-      { emoji: '☕', name: { kk: 'Кофе купоны',   ru: 'Купон на кофе',  en: 'Coffee coupon'  }, desc: { kk: 'Серіктес кафе', ru: 'В кафе-партнёре', en: 'Partner café' }, cost: 100 },
-      { emoji: '🛍️', name: { kk: 'Эко-сөмке',     ru: 'Эко-сумка',      en: 'Eco bag'        }, desc: { kk: 'Қайта қолданылатын', ru: 'Многоразовая', en: 'Reusable bag'  }, cost: 200 },
-      { emoji: '🌳', name: { kk: 'Ағаш отырғызу', ru: 'Посадить дерево', en: 'Plant a tree'   }, desc: { kk: 'Сіздің атыңызбен', ru: 'От вашего имени', en: 'In your name' }, cost: 300 },
-      { emoji: '🎟️', name: { kk: 'Кино билеті',   ru: 'Билет в кино',   en: 'Movie ticket'   }, desc: { kk: 'Серіктес кинотеатр', ru: 'Кинотеатр-партнёр', en: 'Partner cinema' }, cost: 500 },
-    ];
- 
-    function renderRewards() {
-      document.getElementById('rewards-pts-label').textContent =
-        (currentLang === 'ru' ? 'Доступно: ' : 'Қолжетімді: ') +
-        state.points + ' pts';
- 
-      document.getElementById('rewards-grid').innerHTML = REWARDS.map(r => {
-        const canAfford = state.points >= r.cost;
-        return `<div class="reward-card${canAfford ? '' : ' locked'}">
-          ${canAfford ? '' : '<div class="reward-lock">🔒</div>'}
-          <div class="reward-emoji">${r.emoji}</div>
-          <div class="reward-name">${r.name[currentLang] || r.name['ru']}</div>
-          <div class="reward-desc">${r.desc[currentLang] || r.desc['ru']}</div>
-          <div class="reward-cost${canAfford ? ' available' : ''}">★ ${r.cost}</div>
-          <div class="coming-soon-badge">${currentLang === 'kk' ? 'жақында' : 'скоро'}</div>
-        </div>`;
-      }).join('');
-    }
- 
-    // ─── NAV TABS ────────────────────────────────────────────────────────────
-    document.querySelectorAll('.nav-item').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.page).classList.add('active');
-        if (tab.dataset.page === 'profile-page') updateProfile();
-        if (tab.dataset.page === 'leaderboard-page') renderLeaderboard();
-        if (tab.dataset.page === 'rewards-page') renderRewards();
-      });
-    });
- 
-    // ─── WASTE DATA ──────────────────────────────────────────────────────────
-    const wasteData = {
-      kk: {
-        "Пластик": { icon:"♻️", title:"Пластик",  bin:"Сары контейнер",  forbidden:"Ластанған пластик", tip:"Бөтелкелерді жуып кептіріңіз. PET, HDPE, PP маркаларын бөлек жинаңыз." },
-        "Стекло":  { icon:"🫙", title:"Шыны",     bin:"Жасыл контейнер", forbidden:"Керамика",          tip:"Шыны ыдыстарды жуыңыз. Қақпақтарды алыңыз." },
-        "Метал":   { icon:"🔩", title:"Металл",   bin:"Сұр контейнер",  forbidden:"Аккумулятор",       tip:"Алюминий банкаларды қысыңыз. Болат пен алюминийді бөлектеңіз." },
-        "Картон":  { icon:"📦", title:"Картон",   bin:"Көк контейнер",  forbidden:"Майлы картон",      tip:"Картонды тегіс бүктеп, ылғалдан сақтаңыз." },
-      },
-      ru: {
-        "Пластик": { icon:"♻️", title:"Пластик",  bin:"Жёлтый контейнер", forbidden:"Загрязнённый пластик", tip:"Промойте и высушите бутылки. Собирайте PET, HDPE, PP отдельно." },
-        "Стекло":  { icon:"🫙", title:"Стекло",   bin:"Зелёный контейнер",forbidden:"Керамика",             tip:"Промойте стеклянную тару. Снимайте крышки." },
-        "Метал":   { icon:"🔩", title:"Металл",   bin:"Серый контейнер",  forbidden:"Аккумуляторы",         tip:"Сожмите алюминиевые банки. Разделяйте сталь и алюминий." },
-        "Картон":  { icon:"📦", title:"Картон",   bin:"Синий контейнер",  forbidden:"Жирный картон",        tip:"Сложите картон плоско и защитите от влаги перед сдачей." },
-      }
-    };
- 
-    // ─── MAP ─────────────────────────────────────────────────────────────────
-    let map = null, mapInitialized = false;
-    const recyclingPoints = [
-      {
-        lat: 43.6402, lng: 51.2021,
-        title: { ru: "Eco Waste Aqtau (мкр 29а, 23/4)", kk: "Eco Waste Aqtau (29а мкр, 23/4)" },
-        types: { ru: "Пластик, металл, стекло, бумага", kk: "Пластик, металл, шыны, қағаз" },
-        phone: "+7 (727) 251-52-33"
-      },
-      {
-        lat: 43.6523, lng: 51.1847,
-        title: { ru: "ТОО «Хэлп-Экойл» (5 мкр, зд. 3/2)", kk: "«Хэлп-Экойл» ЖШС (5 мкр, 3/2)" },
-        types: { ru: "Все виды вторсырья, опасные отходы", kk: "Барлық қайта өңделетін шикізат" },
-        phone: "Уточняйте по телефону"
-      },
-      {
-        lat: 43.6389, lng: 51.2045,
-        title: { ru: "Пункт приёма металлолома (мкр 29а, 106/1)", kk: "Металл қабылдау пункті (29а мкр)" },
-        types: { ru: "Чёрный и цветной металл, алюминий", kk: "Қара және түсті металл, алюминий" },
-        phone: "Уточняйте"
-      },
-      {
-        lat: 43.6601, lng: 51.1712,
-        title: { ru: "Пункт приёма (3Б мкр, 39/3)", kk: "Қабылдау пункті (3Б мкр, 39/3)" },
-        types: { ru: "Металл, макулатура", kk: "Металл, макулатура" },
-        phone: "Уточняйте"
-      },
-      {
-        lat: 43.6478, lng: 51.1634,
-        title: { ru: "Пункт приёма (11 мкр, 50)", kk: "Қабылдау пункті (11 мкр, 50)" },
-        types: { ru: "Металл, пластик, бумага", kk: "Металл, пластик, қағаз" },
-        phone: "Уточняйте"
-      },
-      {
-        lat: 43.6556, lng: 51.1523,
-        title: { ru: "Пункт приёма (4 мкр, 28/1)", kk: "Қабылдау пункті (4 мкр, 28/1)" },
-        types: { ru: "Металлолом, аккумуляторы", kk: "Металл сынықтары, аккумуляторлар" },
-        phone: "Уточняйте"
-      },
-      {
-        lat: 43.6445, lng: 51.1801,
-        title: { ru: "Пункт приёма (12 мкр, 50/2)", kk: "Қабылдау пункті (12 мкр, 50/2)" },
-        types: { ru: "Металл, электроника, батарейки", kk: "Металл, электроника, батарейлер" },
-        phone: "Уточняйте"
-      },
-    ];
- 
-    function initMap() {
-      map = L.map('map').setView([43.6481, 51.1643], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-      recyclingPoints.forEach(p => {
-        const title = typeof p.title === 'object' ? (p.title[currentLang] || p.title['ru']) : p.title;
-        const types = typeof p.types === 'object' ? (p.types[currentLang] || p.types['ru']) : (p.types || '');
-        const phoneLabel = currentLang === 'kk' ? 'Телефон' : 'Телефон';
-        L.marker([p.lat, p.lng]).addTo(map).bindPopup(
-          `<b>${title}</b><br><span style='font-size:12px;color:#555;'>${types}</span>${p.phone ? '<br><span style="font-size:12px;">📞 ' + p.phone + '</span>' : ''}`
-        );
-      });
-      mapInitialized = true;
-    }
- 
-    document.getElementById('btn-map').addEventListener('click', () => {
-      const mw = document.getElementById('map-wrapper');
-      mw.classList.toggle('visible');
-      if (mw.classList.contains('visible')) {
-        if (!mapInitialized) initMap();
-        else map.invalidateSize();
-      }
-    });
- 
-    // ─── MODEL ───────────────────────────────────────────────────────────────
-    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/4cC54KsZN/";
-    let model = null, imageReady = false, modelLoading = false;
- 
-    const imageEl     = document.getElementById('uploaded-image');
-    const placeholder = document.getElementById('upload-placeholder');
-    const uploadZone  = document.getElementById('upload-zone');
-    const loadingCard = document.getElementById('loading-card');
-    const reportCard  = document.getElementById('report-card');
-    const modelStatus = document.getElementById('model-status');
-
-    function setModelStatus(msg, color) {
-      modelStatus.style.display = msg ? 'block' : 'none';
-      modelStatus.style.color = color || '#888';
-      modelStatus.textContent = msg;
-    }
-
-    async function loadModel() {
-      if (modelLoading) return;
-      modelLoading = true;
-      setModelStatus(currentLang==='kk' ? '⏳ Модель жүктелуде...' : '⏳ Загрузка модели...', '#888');
-      try {
-        // Таймаут 15 секунд на загрузку модели
-        const loadPromise = tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout: модель не загрузилась за 15с')), 15000)
-        );
-        model = await Promise.race([loadPromise, timeoutPromise]);
-        setModelStatus('✅ Модель готова', '#4caf50');
-        setTimeout(() => setModelStatus(''), 2000);
-      } catch(e) {
-        console.warn("Model load error:", e);
-        model = null;
-        setModelStatus('❌ Не удалось загрузить модель. Проверьте интернет и попробуйте снова.', '#e53935');
-      }
-      modelLoading = false;
-    }
-
-    // Pre-load model on page open
-    loadModel();
- 
-    document.getElementById('image-upload').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        imageEl.src = ev.target.result;
-        imageEl.style.display = 'block';
-        placeholder.style.display = 'none';
-        uploadZone.classList.add('has-image');
-        imageReady = true;
-        reportCard.classList.remove('visible');
-        loadingCard.classList.remove('visible');
-      };
-      reader.readAsDataURL(file);
-    });
- 
-    document.getElementById('btn-analyze').addEventListener('click', async () => {
-      if (!imageReady) { alert(t('no_image')); return; }
-      if (!model) {
-        setModelStatus(currentLang==='kk' ? '⏳ Модель жүктелуде...' : '⏳ Загрузка модели...', '#888');
-        loadingCard.classList.add('visible');
-        await loadModel();
-      }
-      if (!model) {
-        setModelStatus(currentLang==='kk' ? '❌ Модель қолжетімсіз. Интернетті тексеріп, қайта басыңыз.' : '❌ Модель недоступна. Проверьте интернет и нажмите ещё раз.', '#e53935');
-        loadingCard.classList.remove('visible');
-        return;
-      }
-      loadingCard.classList.add('visible');
-      reportCard.classList.remove('visible');
-      setTimeout(async () => {
-        await predict();
-        loadingCard.classList.remove('visible');
-      }, 400);
-    });
- 
-    async function predict() {
-      if (!model) { loadingCard.classList.remove('visible'); return; }
-      let predictions;
-      try {
-        predictions = await model.predict(imageEl);
-      } catch(e) {
-        console.error('Predict error:', e);
-        loadingCard.classList.remove('visible');
-        setModelStatus('❌ Ошибка анализа: ' + e.message, '#e53935');
-        return;
-      }
-      predictions.sort((a, b) => b.probability - a.probability);
-      const best = predictions[0];
-      const pct = best.probability;
-      const langData = wasteData[currentLang] || wasteData['kk'];
-      const info = (pct >= 0.4 && langData[best.className]) ? langData[best.className] : null;
- 
-      const badge = document.getElementById('confidence-badge');
-      badge.textContent = (pct * 100).toFixed(1) + '%';
-      badge.className = 'confidence-badge' + (pct < 0.4 ? ' low' : '');
-      document.getElementById('bar-fill').style.width = (pct * 100) + '%';
- 
-      let detectedIcon = 'ℹ️';
-      let detectedTitle = t('not_detected');
- 
-      // Сохраняем сырое имя класса и уверенность для Gemini
-      reportCard.dataset.rawClass = best.className;
-      reportCard.dataset.confidence = pct.toFixed(4);
-
-      if (info) {
-        detectedIcon = info.icon;
-        detectedTitle = info.title;
-        document.getElementById('report-icon').textContent = info.icon;
-        document.getElementById('report-title').textContent = info.title;
-        document.getElementById('info-bin').textContent = info.bin;
-        document.getElementById('info-forbidden').textContent = info.forbidden;
-        document.getElementById('info-tip').textContent = info.tip;
- 
-        // Scanner shows info only — points are awarded at drop-off station by admin
-        // awardPoints removed intentionally
-      } else {
-        document.getElementById('report-icon').textContent = 'ℹ️';
-        document.getElementById('report-title').textContent = t('not_detected');
-        document.getElementById('info-bin').textContent = '—';
-        document.getElementById('info-forbidden').textContent = '—';
-        document.getElementById('info-tip').textContent = best.className + ' (' + (pct*100).toFixed(1) + '%)';
-        // No points for scan — points only awarded at station
-      }
- 
-      reportCard.classList.add('visible');
-    }
- 
-    // ─── INIT ────────────────────────────────────────────────────────────────
-    // Объявляем authToken и currentUser ДО любых вызовов функций
-    const _memStore = {};
-    const safeStorage = {
-      getItem: (k) => { try { return localStorage.getItem(k); } catch { return _memStore[k] ?? null; } },
-      setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} _memStore[k] = v; },
-      removeItem: (k) => { try { localStorage.removeItem(k); } catch {} delete _memStore[k]; },
-    };
-    let authToken = safeStorage.getItem('ecosen_token') || null;
-    let currentUser = null;
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // BACKEND API
-    // ═══════════════════════════════════════════════════════════════════════
-    const API_BASE = 'https://ecosen2-0.onrender.com';
-
-    loadState();
-    updateBanner();
-    renderLeaderboard();
-    renderRewards();
-
-    // ── API helper ──────────────────────────────────────────────────────────
-    async function apiCall(method, path, body = null) {
-      const opts = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-      };
-      if (authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
-      if (body) opts.body = JSON.stringify(body);
-      try {
-        const res = await fetch(API_BASE + path, opts);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Request failed');
-        return data;
-      } catch (e) {
-        console.warn('API error:', e.message);
-        throw e;
-      }
-    }
-
-    // ── Load user from server if token exists ───────────────────────────────
-    async function tryAutoLogin() {
-      if (!authToken) { showAuthModal(); return; }
-      try {
-        const data = await apiCall('GET', '/api/auth/me');
-        currentUser = data.user;
-        syncServerState(currentUser);
-        hideAuthModal();
-        updateProfileName();
-      } catch {
-        safeStorage.removeItem('ecosen_token');
-        authToken = null;
-        showAuthModal();
-      }
-    }
-
-    function syncServerState(user) {
-      state.points = user.points;
-      state.scans = user.scans;
-      saveState();
-      updateBanner();
-      updateProfile();
-    }
-
-    function updateProfileName() {
-      if (!currentUser) return;
-      const el = document.getElementById('profile-name-display');
-      if (el) el.textContent = currentUser.name;
-      const joined = document.getElementById('profile-joined');
-      if (joined) {
-        const d = new Date(currentUser.created_at);
-        joined.textContent = d.toLocaleDateString();
-      }
-    }
-
-
-
-    // ── Override leaderboard to load from server ────────────────────────────
-    async function renderLeaderboardFromServer() {
-      if (!authToken) { renderLeaderboard(); return; }
-      try {
-        const data = await apiCall('GET', '/api/user/leaderboard');
-        const list = data.leaderboard;
-        const myId = currentUser?.id;
-        const rankClasses = ['gold', 'silver', 'bronze'];
-        document.getElementById('leaderboard-list').innerHTML = list.map((p, i) => {
-          const isMe = p.id === myId;
-          const rc = rankClasses[i] || '';
-          return `<div class="lb-item${isMe ? ' me' : ''}">
-            <div class="lb-rank ${rc}">${i + 1}</div>
-            <div class="lb-avatar" style="background:var(--accent-light)">🌿</div>
-            <div class="lb-name">${p.name}${isMe ? ' <span class="lb-me-tag">' + (currentLang === 'kk' ? 'МЕН' : 'Я') + '</span>' : ''}</div>
-            <div class="lb-pts">${p.points} pts</div>
-          </div>`;
-        }).join('');
-        if (data.my_rank && data.my_rank > 10) {
-          document.getElementById('leaderboard-list').insertAdjacentHTML('beforeend',
-            `<div style="text-align:center;padding:12px;font-size:13px;color:var(--text-secondary)">${currentLang==='kk'?'Сіздің рейтингіңіз':'Ваш рейтинг'}: #${data.my_rank}</div>`
-          );
-        }
-      } catch { renderLeaderboard(); }
-    }
-
-    // ── Override history to load from server ────────────────────────────────
-    async function loadHistoryFromServer() {
-      if (!authToken) { updateProfile(); return; }
-      try {
-        const history = await apiCall('GET', '/api/user/history');
-        const histEl = document.getElementById('history-list');
-        if (!history.length) {
-          histEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><span>${currentLang==='kk'?'Тарих бос':'История пуста'}</span></div>`;
-          return;
-        }
-        histEl.innerHTML = history.map(h => {
-          const ago = timeAgo(new Date(h.created_at).getTime());
-          return `<div class="history-item">
-            <div class="history-icon">${h.icon || '♻️'}</div>
-            <div class="history-info">
-              <div class="history-material">${h.material}</div>
-              <div class="history-time">${ago}</div>
-            </div>
-            <div class="history-pts">+${h.points}</div>
-          </div>`;
-        }).join('');
-      } catch { updateProfile(); }
-    }
-
-    // Patch nav tab clicks to load server data
-    document.querySelectorAll('.nav-item').forEach(tab => {
-      tab.addEventListener('click', () => {
-        if (tab.dataset.page === 'leaderboard-page') renderLeaderboardFromServer();
-        if (tab.dataset.page === 'profile-page') loadHistoryFromServer();
-      });
-    });
-
-    // Patch predict: after ML detection → call Gemini AI advice
-    const origPredict = predict;
-    predict = async function() {
-      await origPredict();
-      // After detection, fetch Gemini AI advice (работает и без авторизации для демо,
-      // но полный функционал только для залогиненных)
-      if (authToken) {
-        const reportCard = document.getElementById('report-card');
-        if (reportCard && reportCard.classList.contains('visible')) {
-          const rawClass = reportCard.dataset.rawClass;
-          const confidence = parseFloat(reportCard.dataset.confidence || '0');
-          const materialKey = rawClass ? getMaterialKeyFromClassName(rawClass) : null;
-          if (materialKey) {
-            fetchAIAdvice(materialKey, confidence);
-          }
-        }
-      }
-    };
-
-    // Map raw model class name → API material key
-    // Модель возвращает классы на русском: "Пластик", "Стекло", "Метал", "Картон"
-    function getMaterialKeyFromClassName(className) {
-      const map = {
-        'Пластик':     'plastic',
-        'Стекло':      'glass',
-        'Метал':       'metal',
-        'Металл':      'metal',
-        'Картон':      'cardboard',
-        'Бумага':      'paper',
-        'Органика':    'organic',
-        'Батарейки':   'battery',
-        'Батарея':     'battery',
-        'Электроника': 'electronics',
-        'Текстиль':    'textile',
-        'Алюминий':    'aluminum',
-        // Английские названия на случай другой модели
-        'Plastic':     'plastic',
-        'Glass':       'glass',
-        'Metal':       'metal',
-        'Cardboard':   'cardboard',
-        'Paper':       'paper',
-        'Organic':     'organic',
-        'Battery':     'battery',
-        'Electronics': 'electronics',
-        'Textile':     'textile',
-        'Aluminum':    'aluminum',
-      };
-      // Точное совпадение
-      if (map[className]) return map[className];
-      // Частичное совпадение (регистронезависимо)
-      const lower = className.toLowerCase();
-      for (const [k, v] of Object.entries(map)) {
-        if (lower.includes(k.toLowerCase()) || k.toLowerCase().includes(lower)) return v;
-      }
-      return null;
-    }
-
-    // Fetch Gemini AI advice after ML model detects material
-    async function fetchAIAdvice(materialKey, confidence) {
-      // Найти или создать блок советов внутри report-card
-      const reportCard = document.getElementById('report-card');
-      let adviceBlock = document.getElementById('ai-advice-block');
-      if (!adviceBlock) {
-        adviceBlock = document.createElement('div');
-        adviceBlock.id = 'ai-advice-block';
-        adviceBlock.style.cssText = [
-          'margin:0 18px 16px',
-          'padding:14px 16px',
-          'background:var(--green-bg)',
-          'border:1px solid var(--green-dim)',
-          'border-radius:12px',
-          'font-size:13.5px',
-          'line-height:1.65',
-        ].join(';');
-        reportCard.appendChild(adviceBlock);
-      }
-
-      // Лоадер
-      adviceBlock.innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;color:var(--green);">
-          <div style="width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>
-          <span style="font-size:13px;">EcoBot анализирует...</span>
-        </div>`;
-
-      try {
-        const data = await apiCall('POST', '/api/ai/waste-advice', {
-          material: materialKey,
-          confidence: confidence || 0.5,
-          lang: currentLang,
-        });
-
-        // Цвет и иконка urgency
-        const urgencyMap = {
-          now:     { color: '#3fb950', bg: 'rgba(63,185,80,0.15)', icon: '✅' },
-          soon:    { color: '#d29922', bg: 'rgba(210,153,34,0.15)', icon: '📍' },
-          special: { color: '#f85149', bg: 'rgba(248,81,73,0.15)', icon: '⚠️' },
-        };
-        const urg = urgencyMap[data.urgency] || urgencyMap['soon'];
-
-        let html = `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <span style="font-size:18px;">${data.icon || '🤖'}</span>
-            <span style="font-weight:700;color:var(--text);font-size:14px;">EcoBot</span>
-            <span style="margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:${urg.bg};color:${urg.color};">${urg.icon} ${data.urgency === 'now' ? (currentLang==='kk'?'Кәдімгі бак':'Обычный бак') : data.urgency === 'special' ? (currentLang==='kk'?'Қауіпті материал':'Опасный материал') : (currentLang==='kk'?'Арнайы пункт':'Спец. пункт')}</span>
-          </div>
-          <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:10px;">${data.instructions || ''}</div>`;
-
-        if (data.steps && data.steps.length) {
-          html += `<div style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-dim);margin-bottom:6px;">Что делать:</div>`;
-          html += data.steps.map((s, i) => `
-            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:5px;">
-              <span style="width:20px;height:20px;border-radius:50%;background:var(--green-dim);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i + 1}</span>
-              <span style="font-size:13.5px;color:var(--text-muted);">${s}</span>
-            </div>`).join('');
-        }
-
-        if (data.where) {
-          html += `<div style="margin-top:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border-subtle);border-radius:8px;font-size:13px;color:var(--text-muted);">
-            ${currentLang==='kk'?'📍 <b style="color:var(--text)">Қайда:</b>':'📍 <b style="color:var(--text)">Куда:</b>'} ${data.where}
-          </div>`;
-        }
-
-        if (data.eco_tip) {
-          html += `<div style="margin-top:8px;font-size:12.5px;color:var(--green);font-style:italic;">💡 ${data.eco_tip}</div>`;
-        }
-
-        adviceBlock.innerHTML = html;
-
-        // Добавляем мини-чат с EcoBot
-        buildEcoChat(adviceBlock, materialKey);
-
-      } catch(e) {
-        adviceBlock.innerHTML = `<span style="color:var(--text-muted);font-size:13px;">💬 ${currentLang==='kk'?'AI-кеңестер қолжетімсіз. Байланысты тексеріңіз.':'AI-советы недоступны. Проверьте соединение.'}</span>`;
-      }
-    }
-
-    // ── EcoBot mini-chat ───────────────────────────────────────────────────────
-    function buildEcoChat(container, materialKey) {
-      const chatHistory = []; // { role: 'assistant'|'user', text: string }
-
-      const chatWrap = document.createElement('div');
-      chatWrap.style.cssText = [
-        'margin-top:14px',
-        'border-top:1px solid var(--border)',
-        'padding-top:12px',
-      ].join(';');
-
-      chatWrap.innerHTML = `
-        <div id="ecobot-chat-messages" style="
-          display:flex;flex-direction:column;gap:8px;
-          max-height:240px;overflow-y:auto;
-          margin-bottom:10px;
-          padding-right:2px;
-        "></div>
-        <div style="display:flex;gap:8px;align-items:flex-end;">
-          <textarea id="ecobot-chat-input" rows="1" placeholder="${currentLang==='kk' ? 'EcoBot-қа сұрақ қойыңыз...' : 'Задайте вопрос EcoBot...'}" style="
-            flex:1;padding:10px 12px;
-            border:1px solid var(--border);
-            border-radius:10px;
-            font-size:13.5px;
-            font-family:'Outfit',sans-serif;
-            resize:none;outline:none;
-            background:var(--surface2);
-            color:var(--text);
-            line-height:1.4;
-            max-height:80px;
-            overflow-y:auto;
-          "></textarea>
-          <button id="ecobot-chat-send" style="
-            width:36px;height:36px;flex-shrink:0;
-            background:var(--green);color:#0d1117;
-            border:none;border-radius:50%;cursor:pointer;
-            font-size:16px;display:flex;align-items:center;justify-content:center;
-            transition:opacity 0.2s;font-weight:700;
-          ">➤</button>
+/* ════════════════════════════════════════
+   AUTH MODAL
+════════════════════════════════════════ */
+function mkInput(id,type,ph){
+  return `<input id="${id}" type="${type}" placeholder="${ph}" style="width:100%;padding:12px 14px;border:1.5px solid #dde8e3;border-radius:10px;font-size:14px;font-family:'Montserrat',sans-serif;outline:none;box-sizing:border-box;font-weight:500;"/>`;
+}
+function buildAuthModalHTML(){
+  return `
+  <div id="auth-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);">
+    <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;box-shadow:0 8px 40px rgba(1,114,53,0.18);">
+      <div style="text-align:center;margin-bottom:20px;">
+        <img src="img/logo.png" style="width:44px;height:44px;object-fit:contain;margin-bottom:8px;"/>
+        <h2 style="font-size:20px;font-weight:800;color:#017235;letter-spacing:-0.5px;">EcoSen</h2>
+      </div>
+      <div id="auth-error" style="display:none;background:#fdecea;color:#c0392b;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;font-weight:600;"></div>
+      <!-- LOGIN -->
+      <div id="auth-step-login">
+        <div style="margin-bottom:11px;">${mkInput('auth-email','email','Email')}</div>
+        <div style="margin-bottom:16px;">${mkInput('auth-password','password','Пароль')}</div>
+        <button id="auth-login-btn" style="width:100%;padding:13px;background:#017235;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;font-family:'Montserrat',sans-serif;cursor:pointer;margin-bottom:11px;">Кіру / Войти</button>
+        <div style="text-align:center;margin-bottom:8px;"><button id="auth-goto-register" style="background:none;border:none;font-size:13px;color:#017235;font-family:'Montserrat',sans-serif;cursor:pointer;font-weight:700;">${currentLang==='kk'?'Тіркелу →':'Зарегистрироваться →'}</button></div>
+        <div style="text-align:center;"><button id="auth-skip-btn" style="background:none;border:none;font-size:12px;color:#9eada8;font-family:'Montserrat',sans-serif;cursor:pointer;font-weight:600;">${currentLang==='kk'?'Аккаунтсыз кіру':'Без аккаунта'}</button></div>
+      </div>
+      <!-- REGISTER -->
+      <div id="auth-step-register" style="display:none;">
+        <div style="margin-bottom:10px;">${mkInput('auth-reg-name','text',currentLang==='kk'?'Атыңыз':'Имя')}</div>
+        <div style="margin-bottom:10px;">${mkInput('auth-reg-username','text','Username')}</div>
+        <div style="font-size:11px;color:#9eada8;margin-top:-6px;margin-bottom:10px;padding-left:2px;font-weight:600;">${currentLang==='kk'?'Тек әріптер, сандар және _ (3-30)':'Буквы, цифры и _ (3-30 символов)'}</div>
+        <div style="margin-bottom:10px;">${mkInput('auth-reg-email','email','Email')}</div>
+        <div style="margin-bottom:16px;">${mkInput('auth-reg-password','password',currentLang==='kk'?'Пароль (мин. 6)':'Пароль (мин. 6 символов)')}</div>
+        <button id="auth-send-code-btn" style="width:100%;padding:13px;background:#017235;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;font-family:'Montserrat',sans-serif;cursor:pointer;margin-bottom:11px;">${currentLang==='kk'?'Email-ге код жіберу →':'Отправить код на email →'}</button>
+        <div style="text-align:center;"><button id="auth-back-to-login" style="background:none;border:none;font-size:13px;color:#6b7d75;font-family:'Montserrat',sans-serif;cursor:pointer;font-weight:600;">${currentLang==='kk'?'← Кіруге оралу':'← Назад ко входу'}</button></div>
+      </div>
+      <!-- CODE -->
+      <div id="auth-step-code" style="display:none;">
+        <div style="text-align:center;margin-bottom:18px;">
+          <div style="font-size:30px;margin-bottom:7px;">📬</div>
+          <div style="font-size:15px;font-weight:800;color:#1a1a1a;">${currentLang==='kk'?'Код жіберілді!':'Код отправлен!'}</div>
+          <div id="auth-code-hint" style="font-size:12px;color:#6b7d75;margin-top:4px;font-weight:500;"></div>
+          <div style="font-size:11px;color:#9eada8;margin-top:3px;font-weight:600;">${currentLang==='kk'?'15 минут жарамды':'Действует 15 минут'}</div>
         </div>
-      `;
-      container.appendChild(chatWrap);
+        <div style="display:flex;gap:7px;justify-content:center;margin-bottom:18px;">
+          ${[0,1,2,3,4,5].map(i=>`<input id="auth-d${i}" type="text" maxlength="1" inputmode="numeric" style="width:42px;height:50px;text-align:center;font-size:20px;font-weight:800;font-family:'Montserrat',sans-serif;border:2px solid #dde8e3;border-radius:10px;outline:none;color:#1a1a1a;background:#f4f6f4;"/>`).join('')}
+        </div>
+        <button id="auth-verify-btn" style="width:100%;padding:13px;background:#017235;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;font-family:'Montserrat',sans-serif;cursor:pointer;margin-bottom:11px;">${currentLang==='kk'?'Растау ✓':'Подтвердить ✓'}</button>
+        <div style="text-align:center;"><button id="auth-resend-btn" style="background:none;border:none;font-size:13px;color:#017235;font-family:'Montserrat',sans-serif;cursor:pointer;font-weight:700;">${currentLang==='kk'?'Жаңа код жіберу':'Отправить новый код'}</button></div>
+      </div>
+    </div>
+  </div>`;
+}
 
-      const messagesEl = chatWrap.querySelector('#ecobot-chat-messages');
-      const inputEl    = chatWrap.querySelector('#ecobot-chat-input');
-      const sendBtn    = chatWrap.querySelector('#ecobot-chat-send');
+function showAuthModal(){
+  if(!document.getElementById('auth-modal')){
+    document.body.insertAdjacentHTML('beforeend', buildAuthModalHTML());
+    setupAuthModal();
+  }
+  document.getElementById('auth-modal').style.display='flex';
+}
+function hideAuthModal(){ const m=document.getElementById('auth-modal'); if(m)m.style.display='none'; }
 
-      function addMessage(role, text, isLoading = false) {
-        const isUser = role === 'user';
-        const msgEl = document.createElement('div');
-        msgEl.style.cssText = [
-          'display:flex',
-          isUser ? 'justify-content:flex-end' : 'justify-content:flex-start',
-        ].join(';');
+function setupAuthModal(){
+  let pending='';
+  const err=document.getElementById('auth-error');
+  const showErr=msg=>{ err.textContent=msg; err.style.display='block'; };
+  const clearErr=()=>err.style.display='none';
+  const showStep=s=>{ ['login','register','code'].forEach(x=>{ document.getElementById('auth-step-'+x).style.display=x===s?'block':'none'; }); clearErr(); };
 
-        const bubble = document.createElement('div');
-        bubble.style.cssText = [
-          'max-width:88%',
-          'padding:8px 12px',
-          'border-radius:' + (isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px'),
-          'font-size:13.5px',
-          'line-height:1.55',
-          'white-space:pre-wrap',
-          isUser
-            ? 'background:var(--green-dim);color:#fff;'
-            : 'background:var(--surface2);color:var(--text);border:1px solid var(--border);',
-        ].join(';');
+  document.getElementById('auth-goto-register').onclick=()=>showStep('register');
+  document.getElementById('auth-back-to-login').onclick=()=>showStep('login');
+  document.getElementById('auth-skip-btn').onclick=()=>{ hideAuthModal(); showToast(currentLang==='kk'?'⚠️ Деректер тек осы құрылғыда':'⚠️ Данные только на этом устройстве'); };
 
-        if (isLoading) {
-          bubble.innerHTML = `<span style="display:inline-flex;gap:4px;align-items:center;">
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:ecoDot 1s ease-in-out infinite;animation-delay:0s;"></span>
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.2s;"></span>
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:ecoDot 1s ease-in-out infinite;animation-delay:0.4s;"></span>
-          </span>`;
-        } else {
-          bubble.textContent = text;
-        }
+  document.getElementById('auth-login-btn').addEventListener('click',async()=>{
+    const email=document.getElementById('auth-email').value.trim(), pw=document.getElementById('auth-password').value;
+    if(!email||!pw){showErr(currentLang==='kk'?'Email мен пароль':'Введите email и пароль');return;}
+    clearErr(); const btn=document.getElementById('auth-login-btn'); btn.textContent='...'; btn.disabled=true;
+    try{
+      const d=await apiCall('POST','/api/auth/login',{email,password:pw});
+      authToken=d.token; currentUser=d.user;
+      safeStorage.setItem('ecosen_token',authToken);
+      syncServerState(currentUser); updateProfileName(); hideAuthModal(); updateDrawer();
+      showToast((currentLang==='kk'?'✅ Кірдіңіз: ':'✅ Вы вошли: ')+currentUser.name);
+    }catch(e){showErr(e.message);}
+    finally{btn.textContent='Кіру / Войти';btn.disabled=false;}
+  });
 
-        msgEl.appendChild(bubble);
-        messagesEl.appendChild(msgEl);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        return bubble;
-      }
+  document.getElementById('auth-send-code-btn').addEventListener('click',async()=>{
+    const name=document.getElementById('auth-reg-name').value.trim(),
+          uname=document.getElementById('auth-reg-username').value.trim(),
+          email=document.getElementById('auth-reg-email').value.trim(),
+          pw=document.getElementById('auth-reg-password').value;
+    if(!name||!uname||!email||!pw){showErr(currentLang==='kk'?'Барлық өрістер':'Заполните все поля');return;}
+    clearErr(); const btn=document.getElementById('auth-send-code-btn'); btn.textContent=currentLang==='kk'?'Жіберілуде...':'Отправка...'; btn.disabled=true;
+    try{
+      await apiCall('POST','/api/auth/send-code',{name,username:uname,email,password:pw});
+      pending=email; document.getElementById('auth-code-hint').textContent=(currentLang==='kk'?email+'-ге жіберілді':'Письмо на ')+email;
+      showStep('code'); setupDigits();
+    }catch(e){showErr(e.message);}
+    finally{btn.textContent=currentLang==='kk'?'Email-ге код жіберу →':'Отправить код →';btn.disabled=false;}
+  });
 
-      // Приветственное сообщение
-      setTimeout(() => {
-        addMessage('assistant', currentLang==='kk' ? `Сәлем! 👋 Мен EcoBot. Бұл материал немесе қоқыс сұрыптау туралы сұрақтарыңыз болса — сұраңыз!` : `Привет! 👋 Я EcoBot. Если есть вопросы про этот материал или сортировку мусора — спрашивай!`);
-        chatHistory.push({ role: 'assistant', content: `Привет! Я EcoBot. Если есть вопросы про этот материал (${materialKey}) или сортировку мусора — спрашивай!` });
-      }, 400);
-
-      async function sendMessage() {
-        const text = inputEl.value.trim();
-        if (!text) return;
-
-        inputEl.value = '';
-        inputEl.style.height = 'auto';
-        sendBtn.disabled = true;
-        sendBtn.style.opacity = '0.5';
-
-        addMessage('user', text);
-        chatHistory.push({ role: 'user', content: text });
-
-        const loadingBubble = addMessage('assistant', '', true);
-
-        try {
-          const res = await fetch(API_BASE + '/api/ai/chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {}),
-            },
-            body: JSON.stringify({
-              message: text,
-              context: `Пользователь смотрит советы по переработке материала: ${materialKey}. Отвечай кратко, по делу, используй эмодзи. Говори как живой помощник, не перечисляй длинные списки без нужды.`,
-              history: chatHistory.slice(-8), // последние 8 сообщений для контекста
-            }),
-          });
-          const data = await res.json();
-          const reply = data.reply || data.error || 'Не могу ответить прямо сейчас 😔';
-          loadingBubble.innerHTML = '';
-          loadingBubble.textContent = reply;
-          chatHistory.push({ role: 'assistant', content: reply });
-          messagesEl.scrollTop = messagesEl.scrollHeight;
-        } catch(e) {
-          loadingBubble.textContent = 'Ошибка соединения. Попробуй ещё раз.';
-        }
-
-        sendBtn.disabled = false;
-        sendBtn.style.opacity = '1';
-      }
-
-      sendBtn.addEventListener('click', sendMessage);
-      inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      });
-      inputEl.addEventListener('input', () => {
-        inputEl.style.height = 'auto';
-        inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + 'px';
-      });
+  function setupDigits(){
+    for(let i=0;i<6;i++){
+      const inp=document.getElementById('auth-d'+i); inp.value='';
+      inp.oninput=()=>{ inp.value=inp.value.replace(/\D/g,'').slice(-1); if(inp.value&&i<5)document.getElementById('auth-d'+(i+1)).focus(); };
+      inp.onkeydown=e=>{ if(e.key==='Backspace'&&!inp.value&&i>0)document.getElementById('auth-d'+(i-1)).focus(); };
+      inp.onpaste=e=>{ const t=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,''); if(t.length>=6){for(let j=0;j<6;j++){const d=document.getElementById('auth-d'+j);if(d)d.value=t[j]||'';}document.getElementById('auth-d5').focus();e.preventDefault();} };
     }
+    document.getElementById('auth-d0').focus();
+  }
+  function getCode(){return[0,1,2,3,4,5].map(i=>document.getElementById('auth-d'+i).value).join('');}
+  function errDigits(){for(let i=0;i<6;i++){const d=document.getElementById('auth-d'+i);d.style.borderColor='#e53935';d.style.background='#fdecea';setTimeout(()=>{d.style.borderColor='#dde8e3';d.style.background='#f4f6f4';},1500);}}
 
-    // ══════════════════════════════════════════════════════════════════════
-    // ══════════════════════════════════════════════════════════════════════
-    // AUTH MODAL — 3-step: form → sending → enter code
-    // ══════════════════════════════════════════════════════════════════════
-    function buildInput(id, type, placeholder) {
-      return `<input id="${id}" type="${type}" placeholder="${placeholder}" style="
-        width:100%;padding:12px 14px;border:1px solid #e5e3dd;border-radius:10px;
-        font-size:14px;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;
-      " />`;
-    }
+  document.getElementById('auth-verify-btn').addEventListener('click',async()=>{
+    const code=getCode(); if(code.length<6){showErr(currentLang==='kk'?'6 санды енгізіңіз':'Введите 6 цифр');return;}
+    clearErr(); const btn=document.getElementById('auth-verify-btn'); btn.textContent=currentLang==='kk'?'Тексерілуде...':'Проверка...'; btn.disabled=true;
+    try{
+      const d=await apiCall('POST','/api/auth/verify-code',{email:pending,code});
+      authToken=d.token; currentUser=d.user;
+      safeStorage.setItem('ecosen_token',authToken);
+      syncServerState(currentUser); updateProfileName(); hideAuthModal(); updateDrawer();
+      showToast((currentLang==='kk'?'🎉 Қош келдіңіз, ':'🎉 Добро пожаловать, ')+currentUser.name);
+    }catch(e){errDigits();showErr(e.message);}
+    finally{btn.textContent=currentLang==='kk'?'Растау ✓':'Подтвердить ✓';btn.disabled=false;}
+  });
 
-    const authModalHTML = `
-    <div id="auth-modal" style="
-      position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;
-      display:flex;align-items:center;justify-content:center;padding:20px;
-    ">
-      <div style="
-        background:#fff;border-radius:20px;padding:32px 28px;
-        max-width:340px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.18);
-      ">
-        <!-- Logo -->
-        <div style="text-align:center;margin-bottom:22px;">
-          <span style="font-size:34px">🌿</span>
-          <h2 style="font-size:21px;font-weight:600;margin:6px 0 0;color:#1a1a18;">EcoSen</h2>
-        </div>
+  document.getElementById('auth-resend-btn').addEventListener('click',async()=>{
+    if(!pending)return; clearErr();
+    const btn=document.getElementById('auth-resend-btn'); btn.textContent=currentLang==='kk'?'Жіберілуде...':'Отправка...'; btn.disabled=true;
+    try{ await apiCall('POST','/api/auth/resend-code',{email:pending}); showToast(currentLang==='kk'?'📬 Жаңа код жіберілді':'📬 Новый код отправлен'); setupDigits(); }
+    catch(e){showErr(e.message);}
+    finally{btn.textContent=currentLang==='kk'?'Жаңа код жіберу':'Отправить новый код';btn.disabled=false;}
+  });
+}
 
-        <!-- Error box -->
-        <div id="auth-error" style="
-          display:none;background:#fdecea;color:#c0392b;
-          border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;
-        "></div>
+function handleProfileAuthBtn(){ if(currentUser) logoutUser(); else showAuthModal(); }
+function handleDrawerAuth(){ if(currentUser){closeMenu();logoutUser();}else{closeMenu();showAuthModal();} }
+function handleHeroAuth(){ if(currentUser) goTo('profile-page'); else showAuthModal(); }
+function logoutUser(){
+  if(!confirm('Выйти из аккаунта?'))return;
+  safeStorage.removeItem('ecosen_token'); safeStorage.removeItem('ecosen_state');
+  authToken=null; currentUser=null; state={points:0,scans:0,history:[]};
+  updateBanner(); updateProfile(); updateDrawer(); showAuthModal();
+}
 
-        <!-- STEP 1: Login form -->
-        <div id="auth-step-login">
-          <div style="margin-bottom:12px;">${buildInput('auth-email','email','Email')}</div>
-          <div style="margin-bottom:18px;">${buildInput('auth-password','password','Пароль')}</div>
-          <button id="auth-login-btn" style="
-            width:100%;padding:14px;background:#3a7d44;color:#fff;border:none;
-            border-radius:10px;font-size:15px;font-weight:600;
-            font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;
-          ">Кіру / Войти</button>
-          <div style="text-align:center;margin-bottom:10px;">
-            <button id="auth-goto-register" style="
-              background:none;border:none;font-size:13px;color:#3a7d44;
-              font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:500;
-            ">${currentLang==='kk'?'Тіркелу →':'Зарегистрироваться →'}</button>
-          </div>
-          <div style="text-align:center;">
-            <button id="auth-skip-btn" style="
-              background:none;border:none;font-size:12px;color:#aaa8a0;
-              font-family:'DM Sans',sans-serif;cursor:pointer;
-            ">${currentLang==='kk'?'Аккаунтсыз кіру':'Без аккаунта'}</button>
-          </div>
-        </div>
-
-        <!-- STEP 2: Register form -->
-        <div id="auth-step-register" style="display:none;">
-          <div style="margin-bottom:12px;">${buildInput('auth-reg-name','text', currentLang==='kk' ? 'Атыңыз' : 'Имя')}</div>
-          <div style="margin-bottom:12px;">${buildInput('auth-reg-username','text', currentLang==='kk' ? 'Username (бірегей)' : 'Username (уникальный)')}</div>
-          <div style="font-size:11px;color:#7a7870;margin-top:-8px;margin-bottom:12px;padding-left:2px;">${currentLang==='kk'?'Тек әріптер, сандар және _ (3-30 таңба)':'Только буквы, цифры и _ (3-30 символов)'}</div>
-          <div style="margin-bottom:12px;">${buildInput('auth-reg-email','email','Email')}</div>
-          <div style="margin-bottom:18px;">${buildInput('auth-reg-password','password', currentLang==='kk' ? 'Пароль (мин. 6 таңба)' : 'Пароль (мин. 6 символов)')}</div>
-          <button id="auth-send-code-btn" style="
-            width:100%;padding:14px;background:#3a7d44;color:#fff;border:none;
-            border-radius:10px;font-size:15px;font-weight:600;
-            font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;
-          ">${currentLang==='kk'?'Email-ге код жіберу →':'Отправить код на email →'}</button>
-          <div style="text-align:center;">
-            <button id="auth-back-to-login" style="
-              background:none;border:none;font-size:13px;color:#7a7870;
-              font-family:'DM Sans',sans-serif;cursor:pointer;
-            ">${currentLang==='kk'?'← Кіруге оралу':'← Назад ко входу'}</button>
-          </div>
-        </div>
-
-        <!-- STEP 3: Enter code -->
-        <div id="auth-step-code" style="display:none;">
-          <div style="text-align:center;margin-bottom:20px;">
-            <div style="font-size:32px;margin-bottom:8px;">📬</div>
-            <div style="font-size:15px;font-weight:600;color:#1a1a18;">${currentLang==='kk'?'Код жіберілді!':'Код отправлен!'}</div>
-            <div id="auth-code-email-hint" style="font-size:13px;color:#7a7870;margin-top:4px;"></div>
-            <div style="font-size:12px;color:#aaa8a0;margin-top:4px;">${currentLang==='kk'?'15 минут жарамды':'Действует 15 минут'}</div>
-          </div>
-          <!-- 6 individual digit boxes -->
-          <div id="auth-code-boxes" style="
-            display:flex;gap:8px;justify-content:center;margin-bottom:20px;
-          ">
-            ${[0,1,2,3,4,5].map(i => `
-            <input id="auth-digit-${i}" type="text" maxlength="1" inputmode="numeric"
-              style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;
-                     font-family:'DM Mono',monospace;border:2px solid #e5e3dd;border-radius:10px;
-                     outline:none;color:#1a1a18;background:#f7f6f3;" />
-            `).join('')}
-          </div>
-          <button id="auth-verify-btn" style="
-            width:100%;padding:14px;background:#3a7d44;color:#fff;border:none;
-            border-radius:10px;font-size:15px;font-weight:600;
-            font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;
-          ">${currentLang==='kk'?'Растау ✓':'Подтвердить ✓'}</button>
-          <div style="text-align:center;">
-            <button id="auth-resend-btn" style="
-              background:none;border:none;font-size:13px;color:#3a7d44;
-              font-family:'DM Sans',sans-serif;cursor:pointer;
-            ">${currentLang==='kk'?'Жаңа код жіберу':'Отправить новый код'}</button>
-          </div>
-        </div>
+/* ════════════════════════════════════════
+   ADMIN PANEL
+════════════════════════════════════════ */
+let materialRates=[];
+async function showAdminPanel(){
+  try{ materialRates=await apiCall('GET','/api/admin/material-rates'); }
+  catch(e){ alert('Ошибка: '+e.message); return; }
+  const old=document.getElementById('admin-modal'); if(old)old.remove();
+  const opts=materialRates.map(r=>`<option value="${r.material}">${r.icon} ${r.name_ru} (${r.points_per_kg} бал/кг)</option>`).join('');
+  const modal=document.createElement('div');
+  modal.id='admin-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
+  modal.innerHTML=`
+    <div style="background:#fff;border-radius:20px;padding:24px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(1,114,53,0.18);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div style="font-size:17px;font-weight:800;color:#1a1a1a;">⚙️ Панель администратора</div>
+        <button onclick="document.getElementById('admin-modal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#6b7d75;">×</button>
+      </div>
+      <div style="background:#f4f6f4;border-radius:14px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:800;color:#1a1a1a;margin-bottom:12px;">📦 Начислить баллы пользователю</div>
+        <label style="font-size:11px;color:#6b7d75;display:block;margin-bottom:4px;font-weight:700;">Username</label>
+        <input id="adm-user" type="text" placeholder="eco_user123" style="width:100%;padding:10px 12px;border:1.5px solid #dde8e3;border-radius:10px;font-size:13px;font-family:'Montserrat',sans-serif;box-sizing:border-box;margin-bottom:10px;font-weight:600;"/>
+        <label style="font-size:11px;color:#6b7d75;display:block;margin-bottom:4px;font-weight:700;">Тип мусора</label>
+        <select id="adm-mat" style="width:100%;padding:10px 12px;border:1.5px solid #dde8e3;border-radius:10px;font-size:13px;font-family:'Montserrat',sans-serif;background:#fff;box-sizing:border-box;margin-bottom:10px;font-weight:600;">${opts}</select>
+        <label style="font-size:11px;color:#6b7d75;display:block;margin-bottom:4px;font-weight:700;">Вес (кг)</label>
+        <input id="adm-wt" type="number" step="0.01" min="0.01" placeholder="1.5" style="width:100%;padding:10px 12px;border:1.5px solid #dde8e3;border-radius:10px;font-size:13px;font-family:'Montserrat',sans-serif;box-sizing:border-box;margin-bottom:12px;font-weight:600;"/>
+        <div id="adm-prev" style="background:#e8f5ee;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:#017235;display:none;font-weight:700;"></div>
+        <button id="adm-award" onclick="adminAward()" style="width:100%;padding:12px;background:#017235;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:800;font-family:'Montserrat',sans-serif;cursor:pointer;">✅ Начислить баллы</button>
+      </div>
+      <div style="background:#f4f6f4;border-radius:14px;padding:16px;">
+        <div style="font-size:13px;font-weight:800;color:#1a1a1a;margin-bottom:10px;">📊 Ставки баллов</div>
+        ${materialRates.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #dde8e3;"><span style="font-size:12px;font-weight:600;">${r.icon} ${r.name_ru}</span><span style="font-size:11px;color:#017235;font-weight:800;">${r.points_per_kg} бал/кг</span></div>`).join('')}
       </div>
     </div>`;
+  document.body.appendChild(modal);
+  ['adm-wt','adm-mat'].forEach(id=> document.getElementById(id).addEventListener('input', updPrev));
+}
+function updPrev(){
+  const w=parseFloat(document.getElementById('adm-wt').value), m=document.getElementById('adm-mat').value;
+  const pr=document.getElementById('adm-prev');
+  if(!w||w<=0||!m){pr.style.display='none';return;}
+  const rate=materialRates.find(r=>r.material===m); if(!rate){pr.style.display='none';return;}
+  pr.style.display='block';
+  pr.textContent=`💡 Будет начислено: ${Math.round(rate.points_per_kg*w)} баллов · CO₂: ${(rate.co2_per_kg*w).toFixed(2)} кг`;
+}
+async function adminAward(){
+  const username=document.getElementById('adm-user').value.trim(), material=document.getElementById('adm-mat').value, weight_kg=parseFloat(document.getElementById('adm-wt').value);
+  if(!username){alert('Введите username');return;}
+  if(!weight_kg||weight_kg<=0){alert('Введите вес');return;}
+  const btn=document.getElementById('adm-award'); btn.textContent='Отправка...'; btn.disabled=true;
+  try{
+    const r=await apiCall('POST','/api/admin/award',{username,material,weight_kg});
+    btn.textContent='✅ Начислить баллы'; btn.disabled=false;
+    document.getElementById('adm-user').value=''; document.getElementById('adm-wt').value=''; document.getElementById('adm-prev').style.display='none';
+    alert(`✅ Готово!\n@${r.user.username}\n+${r.awarded_points} баллов\n${r.material} (${r.weight_kg}кг)\nCO₂: ${r.co2_saved.toFixed(2)}кг`);
+  }catch(e){btn.textContent='✅ Начислить баллы';btn.disabled=false;alert('Ошибка: '+e.message);}
+}
 
-    function showAuthModal() {
-      if (!document.getElementById('auth-modal')) {
-        document.body.insertAdjacentHTML('beforeend', authModalHTML);
-        setupAuthModal();
-      }
-      document.getElementById('auth-modal').style.display = 'flex';
-    }
-
-    function hideAuthModal() {
-      const m = document.getElementById('auth-modal');
-      if (m) m.style.display = 'none';
-    }
-
-    function setupAuthModal() {
-      let pendingEmail = '';
-
-      const errBox = document.getElementById('auth-error');
-      function showErr(msg) { errBox.textContent = msg; errBox.style.display = 'block'; }
-      function clearErr() { errBox.style.display = 'none'; }
-
-      function showStep(step) {
-        ['login','register','code'].forEach(s => {
-          document.getElementById('auth-step-' + s).style.display = s === step ? 'block' : 'none';
-        });
-        clearErr();
-      }
-
-      // ── Navigation ────────────────────────────────────────────────────────
-      document.getElementById('auth-goto-register').addEventListener('click', () => showStep('register'));
-      document.getElementById('auth-back-to-login').addEventListener('click', () => showStep('login'));
-      document.getElementById('auth-skip-btn').addEventListener('click', () => {
-        hideAuthModal();
-        showToast(currentLang==='kk' ? '⚠️ Деректер тек осы құрылғыда сақталады' : '⚠️ Данные сохраняются только на этом устройстве');
-      });
-
-      // ── LOGIN ──────────────────────────────────────────────────────────────
-      document.getElementById('auth-login-btn').addEventListener('click', async () => {
-        const email = document.getElementById('auth-email').value.trim();
-        const password = document.getElementById('auth-password').value;
-        if (!email || !password) { showErr(currentLang==='kk' ? 'Email мен парольді енгізіңіз' : 'Введите email и пароль'); return; }
-        clearErr();
-        const btn = document.getElementById('auth-login-btn');
-        btn.textContent = '...'; btn.disabled = true;
-        try {
-          const data = await apiCall('POST', '/api/auth/login', { email, password });
-          authToken = data.token;
-          currentUser = data.user;
-          safeStorage.setItem('ecosen_token', authToken);
-          syncServerState(currentUser);
-          updateProfileName();
-          hideAuthModal();
-          showToast((currentLang==='kk' ? '✅ Кірдіңіз: ' : '✅ Вы вошли как ') + currentUser.name);
-        } catch (e) {
-          showErr(e.message);
-        } finally {
-          btn.textContent = currentLang==='kk' ? 'Кіру' : 'Войти'; btn.disabled = false;
-        }
-      });
-
-      // ── SEND CODE ─────────────────────────────────────────────────────────
-      document.getElementById('auth-send-code-btn').addEventListener('click', async () => {
-        const name = document.getElementById('auth-reg-name').value.trim();
-        const username = document.getElementById('auth-reg-username').value.trim();
-        const email = document.getElementById('auth-reg-email').value.trim();
-        const password = document.getElementById('auth-reg-password').value;
-        if (!name || !username || !email || !password) { showErr(currentLang==='kk' ? 'Барлық өрістерді толтырыңыз' : 'Заполните все поля'); return; }
-        clearErr();
-        const btn = document.getElementById('auth-send-code-btn');
-        btn.textContent = currentLang==='kk' ? 'Жіберілуде...' : 'Отправка...'; btn.disabled = true;
-        try {
-          await apiCall('POST', '/api/auth/send-code', { name, username, email, password });
-          pendingEmail = email;
-          document.getElementById('auth-code-email-hint').textContent = (currentLang==='kk' ? email + '-ге хат жіберілді' : 'Письмо отправлено на ' + email);
-          showStep('code');
-          setupCodeInputs();
-        } catch (e) {
-          showErr(e.message);
-        } finally {
-          btn.textContent = currentLang==='kk' ? 'Email-ге код жіберу →' : 'Отправить код на email →'; btn.disabled = false;
-        }
-      });
-
-      // ── CODE INPUT: auto-advance between boxes ────────────────────────────
-      function setupCodeInputs() {
-        for (let i = 0; i < 6; i++) {
-          const inp = document.getElementById('auth-digit-' + i);
-          inp.value = '';
-          inp.addEventListener('input', () => {
-            inp.value = inp.value.replace(/[^0-9]/g, '').slice(-1);
-            if (inp.value && i < 5) document.getElementById('auth-digit-' + (i+1)).focus();
-          });
-          inp.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && !inp.value && i > 0)
-              document.getElementById('auth-digit-' + (i-1)).focus();
-          });
-          inp.addEventListener('paste', (e) => {
-            const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
-            if (text.length >= 6) {
-              for (let j = 0; j < 6; j++) {
-                const d = document.getElementById('auth-digit-' + j);
-                if (d) d.value = text[j] || '';
-              }
-              document.getElementById('auth-digit-5').focus();
-              e.preventDefault();
-            }
-          });
-        }
-        document.getElementById('auth-digit-0').focus();
-      }
-
-      function getCode() {
-        return [0,1,2,3,4,5].map(i => document.getElementById('auth-digit-' + i).value).join('');
-      }
-
-      function highlightCodeError() {
-        for (let i = 0; i < 6; i++) {
-          const d = document.getElementById('auth-digit-' + i);
-          d.style.borderColor = '#c0392b';
-          d.style.background = '#fdecea';
-          setTimeout(() => { d.style.borderColor = '#e5e3dd'; d.style.background = '#f7f6f3'; }, 1500);
-        }
-      }
-
-      // ── VERIFY CODE ───────────────────────────────────────────────────────
-      document.getElementById('auth-verify-btn').addEventListener('click', async () => {
-        const code = getCode();
-        if (code.length < 6) { showErr(currentLang==='kk' ? '6 санды енгізіңіз' : 'Введите все 6 цифр'); return; }
-        clearErr();
-        const btn = document.getElementById('auth-verify-btn');
-        btn.textContent = currentLang==='kk' ? 'Тексерілуде...' : 'Проверка...'; btn.disabled = true;
-        try {
-          const data = await apiCall('POST', '/api/auth/verify-code', { email: pendingEmail, code });
-          authToken = data.token;
-          currentUser = data.user;
-          safeStorage.setItem('ecosen_token', authToken);
-          syncServerState(currentUser);
-          updateProfileName();
-          hideAuthModal();
-          showToast((currentLang==='kk' ? '🎉 Аккаунт жасалды! Қош келдіңіз, ' : '🎉 Аккаунт создан! Добро пожаловать, ') + currentUser.name);
-        } catch (e) {
-          highlightCodeError();
-          showErr(e.message);
-        } finally {
-          btn.textContent = currentLang==='kk' ? 'Растау ✓' : 'Подтвердить ✓'; btn.disabled = false;
-        }
-      });
-
-      // ── RESEND ────────────────────────────────────────────────────────────
-      document.getElementById('auth-resend-btn').addEventListener('click', async () => {
-        if (!pendingEmail) return;
-        clearErr();
-        const btn = document.getElementById('auth-resend-btn');
-        btn.textContent = currentLang==='kk' ? 'Жіберілуде...' : 'Отправка...'; btn.disabled = true;
-        try {
-          await apiCall('POST', '/api/auth/resend-code', { email: pendingEmail });
-          document.getElementById('auth-code-email-hint').textContent = (currentLang==='kk' ? pendingEmail + '-ге жаңа код жіберілді' : 'Новый код отправлен на ' + pendingEmail);
-          showToast(currentLang==='kk' ? '📬 Жаңа код жіберілді' : '📬 Новый код отправлен');
-          setupCodeInputs();
-        } catch (e) {
-          showErr(e.message);
-        } finally {
-          btn.textContent = currentLang==='kk' ? 'Жаңа код жіберу' : 'Отправить новый код'; btn.disabled = false;
-        }
-      });
-    }
-
-
-
-    function handleProfileAuthBtn() {
-      if (currentUser) {
-        logoutUser();
-      } else {
-        showAuthModal();
-      }
-    }
-
-    function logoutUser() {
-      if (!confirm('Выйти из аккаунта?')) return;
-      safeStorage.removeItem('ecosen_token');
-      safeStorage.removeItem('ecosen_state');
-      authToken = null;
-      currentUser = null;
-      state = { points: 0, scans: 0, history: [] };
-      updateBanner();
-      updateProfile();
-      showAuthModal();
-    }
-
-    // ── ADMIN PANEL ──────────────────────────────────────────────────────────
-    let materialRates = [];
-
-    async function showAdminPanel() {
-      // Load material rates
-      try {
-        materialRates = await apiCall('GET', '/api/admin/material-rates');
-      } catch(e) {
-        alert('Ошибка загрузки ставок: ' + e.message); return;
-      }
-
-      // Remove old modal if exists
-      const old = document.getElementById('admin-modal');
-      if (old) old.remove();
-
-      const ratesOptions = materialRates.map(r =>
-        `<option value="${r.material}">${r.icon} ${r.name_ru} (${r.points_per_kg} бал/кг)</option>`
-      ).join('');
-
-      const modal = document.createElement('div');
-      modal.id = 'admin-modal';
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;';
-      modal.innerHTML = `
-        <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <div style="font-size:18px;font-weight:700;color:#1a1a18;">⚙️ Панель администратора</div>
-            <button onclick="document.getElementById('admin-modal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#7a7870;">×</button>
-          </div>
-
-          <!-- Award points section -->
-          <div style="background:#f7f6f3;border-radius:14px;padding:18px;margin-bottom:16px;">
-            <div style="font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:14px;">📦 Начислить баллы пользователю</div>
-
-            <div style="margin-bottom:10px;">
-              <label style="font-size:12px;color:#7a7870;display:block;margin-bottom:4px;">Username</label>
-              <input id="admin-username-input" type="text" placeholder="например: eco_user123"
-                style="width:100%;padding:10px 12px;border:1.5px solid #e5e3dd;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;" />
-            </div>
-
-            <div style="margin-bottom:10px;">
-              <label style="font-size:12px;color:#7a7870;display:block;margin-bottom:4px;">Тип мусора</label>
-              <select id="admin-material-select"
-                style="width:100%;padding:10px 12px;border:1.5px solid #e5e3dd;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;background:#fff;box-sizing:border-box;">
-                ${ratesOptions}
-              </select>
-            </div>
-
-            <div style="margin-bottom:14px;">
-              <label style="font-size:12px;color:#7a7870;display:block;margin-bottom:4px;">Вес (кг)</label>
-              <input id="admin-weight-input" type="number" step="0.01" min="0.01" placeholder="например: 1.5"
-                style="width:100%;padding:10px 12px;border:1.5px solid #e5e3dd;border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;box-sizing:border-box;" />
-            </div>
-
-            <!-- Preview -->
-            <div id="admin-preview" style="background:#eaf2ec;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#3a7d44;display:none;"></div>
-
-            <button id="admin-award-btn" onclick="adminAwardPoints()" style="
-              width:100%;padding:13px;background:#3a7d44;color:#fff;border:none;
-              border-radius:10px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;
-            ">✅ Начислить баллы</button>
-          </div>
-
-          <!-- Rates info -->
-          <div style="background:#f7f6f3;border-radius:14px;padding:18px;">
-            <div style="font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:12px;">📊 Ставки баллов</div>
-            ${materialRates.map(r => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e5e3dd;">
-                <div style="font-size:13px;">${r.icon} ${r.name_ru}</div>
-                <div style="font-size:12px;color:#3a7d44;font-weight:600;">${r.points_per_kg} бал/кг &nbsp;·&nbsp; ${r.co2_per_kg} кг CO₂/кг</div>
-              </div>`).join('')}
-          </div>
-        </div>`;
-
-      document.body.appendChild(modal);
-
-      // Live preview on input change
-      ['admin-weight-input','admin-material-select'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updateAdminPreview);
-      });
-    }
-
-    function updateAdminPreview() {
-      const weight = parseFloat(document.getElementById('admin-weight-input').value);
-      const material = document.getElementById('admin-material-select').value;
-      const preview = document.getElementById('admin-preview');
-      if (!weight || weight <= 0 || !material) { preview.style.display='none'; return; }
-      const rate = materialRates.find(r => r.material === material);
-      if (!rate) { preview.style.display='none'; return; }
-      const pts = Math.round(rate.points_per_kg * weight);
-      const co2 = (rate.co2_per_kg * weight).toFixed(2);
-      preview.style.display = 'block';
-      preview.textContent = `💡 Будет начислено: ${pts} баллов · Сэкономлено CO₂: ${co2} кг`;
-    }
-
-    async function adminAwardPoints() {
-      const username = document.getElementById('admin-username-input').value.trim();
-      const material = document.getElementById('admin-material-select').value;
-      const weight_kg = parseFloat(document.getElementById('admin-weight-input').value);
-      if (!username) { alert('Введите username'); return; }
-      if (!weight_kg || weight_kg <= 0) { alert('Введите вес'); return; }
-
-      const btn = document.getElementById('admin-award-btn');
-      btn.textContent = 'Отправка...'; btn.disabled = true;
-      try {
-        const res = await apiCall('POST', '/api/admin/award', { username, material, weight_kg });
-        btn.textContent = '✅ Начислить баллы'; btn.disabled = false;
-        document.getElementById('admin-username-input').value = '';
-        document.getElementById('admin-weight-input').value = '';
-        document.getElementById('admin-preview').style.display = 'none';
-        alert(`✅ Готово!\nПользователь: @${res.user.username}\nНачислено: +${res.awarded_points} баллов\nМатериал: ${res.material} (${res.weight_kg} кг)\nCO₂: ${res.co2_saved.toFixed(2)} кг`);
-      } catch(e) {
-        btn.textContent = '✅ Начислить баллы'; btn.disabled = false;
-        alert('Ошибка: ' + e.message);
-      }
-    }
-
-    // ── Start ────────────────────────────────────────────────────────────────
-    tryAutoLogin();
-  </script>
-
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+loadState();
+updateBanner();
+renderLeaderboard();
+renderRewards();
+updateDrawer();
+setLang('ru');
+tryAutoLogin();
+</script>
+</body>
+</html>
